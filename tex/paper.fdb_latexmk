@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex paper"] 1760440904.63548 "paper.aux" "paper.bbl" "paper" 1760440906.16929 0
+["bibtex paper"] 1760441464.36436 "paper.aux" "paper.bbl" "paper" 1760441465.86235 0
   "./refs.bib" 1760437349 131 af9bb5bc36ac9a746247080efe9a755b ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/bibtex/bst/bibtex/plain.bst" 1291864736 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "paper.aux" 1760440905 1002 b5066f9fbdefb7d1f83ad0c184b88956 "pdflatex"
+  "paper.aux" 1760441465 1002 b5066f9fbdefb7d1f83ad0c184b88956 "pdflatex"
   (generated)
   "paper.bbl"
   "paper.blg"
   (rewritten before read)
-["pdflatex"] 1760440904.95337 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760440906.16989 0
+["pdflatex"] 1760441464.62504 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760441465.86292 0
   "C:/Users/vulpi/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1760440902 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1760440036 13321623 3fb338287053e28da04db6fc1a036b60 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1233951848 1004 54797486969f23fa377b128694d548df ""
@@ -100,11 +100,11 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/dicts/translations-basic-dictionary-english.trsl" 1644048522 5588 0c1628daf15f4411ff1f463114c634a3 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760437349 2584 ad27e905163958e797c043354f7f6c2f ""
-  "paper.aux" 1760440905 1002 b5066f9fbdefb7d1f83ad0c184b88956 "pdflatex"
-  "paper.bbl" 1760440904 52 0eba253fc001332e731e8aba3f23127b "bibtex paper"
-  "paper.out" 1760440905 1013 1862da5095b477995fccd8bfe15b0f2a "pdflatex"
-  "paper.tex" 1760437349 2584 ad27e905163958e797c043354f7f6c2f ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760441462 2584 ad27e905163958e797c043354f7f6c2f ""
+  "paper.aux" 1760441465 1002 b5066f9fbdefb7d1f83ad0c184b88956 "pdflatex"
+  "paper.bbl" 1760441464 52 0eba253fc001332e731e8aba3f23127b "bibtex paper"
+  "paper.out" 1760441465 1013 1862da5095b477995fccd8bfe15b0f2a "pdflatex"
+  "paper.tex" 1760441462 2584 ad27e905163958e797c043354f7f6c2f ""
   (generated)
   "paper.aux"
   "paper.log"
