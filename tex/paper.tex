@@ -13,49 +13,93 @@
 \maketitle
 
 \section{Premessa}
-Consideriamo un disco di raggio $R$ sospeso ad una distanza $h_c \approx \SI{0.20}{m}$ dal suolo. La portanza è fornita da un cuscino d'aria con pressione quasi uniforme $p_c$ sull'area $\pi R^2$, mentre le perdite avvengono principalmente attraverso una regione anulare periferica di larghezza $w$ e \emph{gap efficace} $h_{\mathrm{eff}}$ determinato da una corona di getti (sigillo aerodinamico, effetto Coandă).
+Consideriamo un disco di raggio \(R\) sospeso ad una distanza \(h_c \approx \SI{0.20}{m}\) dal suolo.  
+La portanza è fornita da un cuscino d'aria con pressione quasi uniforme \(p_c\) sull'area \(\pi R^2\), mentre le perdite si concentrano in una regione anulare periferica di larghezza \(w\).  
+Il sistema di sigillo aerodinamico (tramite corona di getti o effetto Coandă) introduce un \emph{gap efficace} \(h_{\mathrm{eff}}\) nella zona del sigillo.  
 
-\section{Equazioni}
-La pressione richiesta per sostenere un carico $m$ è
-\begin{equation}
+Lo script Python in questa repository implementa un modello 2D (assi-simmetrico) stazionario che calcola i campi di pressione e velocità (radiale e assiale) sulla sezione \(r\)–\(z\). In particolare, viene creato un plot di geometria e una mappa a colori con tre subplot: pressione \(p(r,z)\), velocità radiale \(u_r(r,z)\), velocità assiale \(u_z(r,z)\).
+
+Qui di seguito sono elencate le principali assunzioni, le equazioni implementate e le modalità di costruzione dei campi.
+
+\section{Assunzioni principali del modello}
+\begin{itemize}
+  \item Il flusso è **incomprimibile**, stazionario e assi-simmetrico.
+  \item Nell'area interna \(0 \le r \le R - w\), si assume che la distanza dal suolo sia \(h_c\), la pressione sia circa uniforme \(p_c\) e le velocità trascurabili rispetto al flusso nel sigillo.
+  \item Nel tratto anulare di sigillo \(R - w \le r \le R\), il flusso è modellato come flusso vischioso tra piastre parallele (applicazione dell'approssimazione di lubrificazione), con gap costante \(h_{\mathrm{eff}}\).
+  \item Il modello non tiene conto dell'inerzia nel sigillo (non è un regime orifizio attivo con ingresso di getti distinti), per ottenere un campo regolare e continuo.
+  \item Il campo assiale \(u_z\) nel sigillo è assunto ~0, coerente con il modello di flusso radiale puro in regime lubrificato (il flusso si “distribuisce” radialmente, senza penetrazione in z).
+  \item All'esterno del disco (\(r > R\)) la pressione è posta uguale a quella ambiente (\(p=0\)) e le velocità sono nulle.
+\end{itemize}
+
+\section{Equazioni implementate}
+
+\subsection{Pressione richiesta per la portanza}
+Per sostenere un carico \(m\):
+\[
 p_c = \frac{m g}{\pi R^2}.
-\end{equation}
+\]
 
-\subsection{Regime viscoso (lubrificazione)}
-Nel tratto anulare $R-w \le r \le R$, assumendo flusso tra lastre parallele,
-\begin{align}
-\bar u(r) &= -\frac{h_{\mathrm{eff}}^2}{12\mu} \frac{\mathrm{d}p}{\mathrm{d}r},\\
-Q &= 2\pi r h_{\mathrm{eff}} \bar u(r),
-\end{align}
-da cui
-\begin{equation}
-\frac{\mathrm{d}p}{\mathrm{d}r} = -\frac{6\mu Q}{\pi r h_{\mathrm{eff}}^3},
-\end{equation}
-e integrando
-\begin{equation}
-p_c = \frac{6\mu Q}{\pi h_{\mathrm{eff}}^3}\ln\!\left(\frac{R}{R-w}\right)
-\quad\Rightarrow\quad
-Q = \frac{\pi h_{\mathrm{eff}}^3 p_c}{6\mu \ln\!\left(\frac{R}{R-w}\right)}.
-\end{equation}
+\subsection{Portata \(Q\) nel tratto di sigillo — regime vischioso (lubrificazione)}
+Nella zona sigillo \(R - w \le r \le R\), si assume:
+\[
+\bar u(r) = -\frac{h_{\mathrm{eff}}^2}{12\,\mu}\,\frac{dp}{dr}, \qquad
+Q = 2\pi\,r\,h_{\mathrm{eff}}\,\bar u(r).
+\]
+Da qui:
+\[
+\frac{dp}{dr} = -\frac{6\,\mu\,Q}{\pi\,r\,h_{\mathrm{eff}}^3}.
+\]
+Integrando da \(r = R-w\) (dove \(p = p_c\)) fino a \(r = R\) (dove \(p = 0\)):
+\[
+p_c = \frac{6\,\mu\,Q}{\pi\,h_{\mathrm{eff}}^3} \ln\!\frac{R}{R-w}
+\quad\Longrightarrow\quad
+Q = \frac{\pi\,h_{\mathrm{eff}}^3\,p_c}{6\,\mu\,\ln\!\left(\tfrac{R}{R-w}\right)}.
+\]
+La potenza aerodinamica ideale è:
+\[
+P_{\mathrm{ideal}} = p_c\,Q.
+\]
 
-\subsection{Regime orifizio (inerziale)}
-Per numeri di Reynolds elevati il tratto anulare agisce come una luce di uscita con area $A_{\mathrm{eff}} = 2\pi R h_{\mathrm{eff}}$ e coefficiente di scarico $C_d$:
-\begin{align}
-Q &= C_d\, A_{\mathrm{eff}} \sqrt{\frac{2 p_c}{\rho}},\\
-P_{\mathrm{ideal}} &= p_c\, Q.
-\end{align}
+\subsection{Costruzione dei campi 2D}
+Il codice costruisce una griglia \((r,z)\) con \(r\) da \(0\) a \(R + w\) e \(z\) da \(0\) a \(h_c\).  
+Si definiscono tre regioni tramite maschere logiche:
+\begin{itemize}
+  \item \(\text{mask}_{\mathrm{interior}}\): \(r \le R - w\), \(z \le h_c\). In questa zona \(p = p_c\), \(u_r = 0\), \(u_z = 0\).
+  \item \(\text{mask}_{\mathrm{seal}}\): \(R - w < r \le R\), \(z \le h_{\mathrm{eff}}\). In questa zona:
+  \[
+  p(r,z) = p_c - \underbrace{\frac{6\,\mu\,Q}{\pi\,h_{\mathrm{eff}}^3}}_{\text{costante}} \ln\!\frac{r}{R-w},
+  \]
+  \[
+  u_r(r,z) = 6\,\bar u(r)\,\phi\,(1 - \phi), \quad \phi = \frac{z}{h_{\mathrm{eff}}}, \qquad u_z(r,z) \approx 0.
+  \]
+  \item \(\text{mask}_{\mathrm{outside}}\): \(r > R\). In questa zona \(p = 0\), \(u_r = u_z = 0\).
+\end{itemize}
 
-\section{Campi $p(r)$ e $\bar u(r)$}
-Nel regime viscoso si ottiene un decadimento logaritmico di pressione nel tratto anulare; nel regime orifizio la pressione è circa costante $p_c$ fino a $r \approx R$ con caduta netta all'uscita. Il codice produce i grafici e salva le figure in \texttt{figs/}.
+\noindent Dove \(\bar u(r)\) è la velocità media radiale:
+\[
+\bar u(r) = \frac{Q}{2\pi\,r\,h_{\mathrm{eff}}}.
+\]
 
-\section{Uso}
-\begin{verbatim}
-python scripts/run_sim.py --R 1.0 --h_c 0.20 --w 0.05 --h_eff 0.03 --m_load 40 --cd 0.65
-\end{verbatim}
+Con queste formulazioni, il codice produce:
+\begin{itemize}
+  \item il plot della geometria (sezione \(r\)–\(z\)) con indicazione del disco, labbro e zona di sigillo;
+  \item il plot con tre subplot (colormap) per \(p(r,z)\), \(u_r(r,z)\), \(u_z(r,z)\).
+\end{itemize}
 
-\section{Note}
-Il modello è stazionario, incomprimibile e 2D; il sigillo aerodinamico è rappresentato per mezzo di un gap efficace $h_{\mathrm{eff}}$ e/o di un coefficiente $C_d$. Estensioni possibili: doppia corona, anello di risucchio, suolo non piano, controllo attivo a settori.
+\section{Risultati d'esempio}
+Con i parametri tipici:
+\[
+R = 1.0\,\text{m}, \quad w = 0.05\,\text{m}, \quad h_{\mathrm{eff}} = 0.03\,\text{m}, \quad m = 40\,\mathrm{kg},
+\]
+il codice stampa i valori di \(p_c\), \(Q\) e \(P_{\mathrm{ideal}}\), e salva i file immagine in \texttt{figs/geometry.png} e \texttt{figs/fields\_tripanel.png}.
 
-\bibliographystyle{plain}
-\bibliography{refs}
+\section{Possibili estensioni}
+\begin{itemize}
+  \item Passare al regime orifizio (modello con \(\mathrm{Cd}\)) e generare un campo di pressione/velocità coerente con quel regime.
+  \item Inserire un termine di alimentazione (o risucchio) che generi un componente \(u_z \neq 0\), più realistico per l'azione della corona.
+  \item Modellare un doppio sigillo (corona interna + corona esterna) con slot di risucchio.
+  \item Tenere conto di effetti di compressibilità, perdite locali, turbolenza e variazione del gap in funzione della quota.
+  \item Estendere il modello a condizioni non piane del suolo o offset verticali variabili.
+\end{itemize}
+
 \end{document}
