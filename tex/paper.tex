@@ -1,105 +1,129 @@
 \documentclass[11pt,a4paper]{article}
+
+% -------------------------------------------------
+% Pacchetti
+% -------------------------------------------------
 \usepackage[margin=2.5cm]{geometry}
-\usepackage{amsmath, amssymb}
+\usepackage{amsmath,amssymb}
 \usepackage{siunitx}
 \usepackage{graphicx}
+\usepackage{microtype} % aiuta a ridurre Overfull/Underfull hbox
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage{hyperref}
 
-\title{Hover Disc a 20 cm: Modello 2D Assi-simmetrico e Sigillo Aerodinamico}
+% Impostazioni didascalie: niente hbox lunghi
+\captionsetup{format=plain,justification=raggedright,singlelinecheck=false}
+
+\title{Hover Disc a 20\,cm: Modello con Cuscino Centrale e Getto di Corona}
 \author{}
 \date{\today}
 
 \begin{document}
 \maketitle
 
-\section{Premessa}
-Consideriamo un disco di raggio \(R\) sospeso ad una distanza \(h_c \approx \SI{0.20}{m}\) dal suolo.  
-La portanza è fornita da un cuscino d'aria con pressione quasi uniforme \(p_c\) sull'area \(\pi R^2\), mentre le perdite si concentrano in una regione anulare periferica di larghezza \(w\).  
-Il sistema di sigillo aerodinamico (tramite corona di getti o effetto Coandă) introduce un \emph{gap efficace} \(h_{\mathrm{eff}}\) nella zona del sigillo.  
+\section{Schema geometrico e notazioni}
 
-Lo script Python in questa repository implementa un modello 2D (assi-simmetrico) stazionario che calcola i campi di pressione e velocità (radiale e assiale) sulla sezione \(r\)–\(z\). In particolare, viene creato un plot di geometria e una mappa a colori con tre subplot: pressione \(p(r,z)\), velocità radiale \(u_r(r,z)\), velocità assiale \(u_z(r,z)\).
+\begin{figure}[ht]
+  \centering
+  % usa \linewidth per evitare overfull dei float larghi
+  \includegraphics[width=0.8\linewidth]{./figures/schema_geometry.png}
+  % Evita math in PDF strings con \texorpdfstring
+  \caption{Schema della sezione assiale: disco sospeso a quota \(h\), zona centrale a pressione quasi costante \texorpdfstring{$p_c$}{pc}, fascia di getto periferico di larghezza \texorpdfstring{$w$}{w}, portata entrante \texorpdfstring{$\dot{m}_{\mathrm{in}}$}{mdot\_in}, portata della corona \texorpdfstring{$\dot{m}_{\mathrm{corona}}$}{mdot\_corona} e flusso disperso laterale \texorpdfstring{$\dot{m}_{\mathrm{loss}}$}{mdot\_loss}. L'asse di simmetria a \texorpdfstring{$r=0$}{r=0} è mostrato.}
+  \label{fig:schemageo}
+\end{figure}
 
-Qui di seguito sono elencate le principali assunzioni, le equazioni implementate e le modalità di costruzione dei campi.
-
-\section{Assunzioni principali del modello}
+Nel presente modello semplificato non consideriamo pareti laterali rigide né air--curtain: l'unico \emph{sigillo} è costituito dalla corona periferica. Le grandezze in figura sono:
 \begin{itemize}
-  \item Il flusso è **incomprimibile**, stazionario e assi-simmetrico.
-  \item Nell'area interna \(0 \le r \le R - w\), si assume che la distanza dal suolo sia \(h_c\), la pressione sia circa uniforme \(p_c\) e le velocità trascurabili rispetto al flusso nel sigillo.
-  \item Nel tratto anulare di sigillo \(R - w \le r \le R\), il flusso è modellato come flusso vischioso tra piastre parallele (applicazione dell'approssimazione di lubrificazione), con gap costante \(h_{\mathrm{eff}}\).
-  \item Il modello non tiene conto dell'inerzia nel sigillo (non è un regime orifizio attivo con ingresso di getti distinti), per ottenere un campo regolare e continuo.
-  \item Il campo assiale \(u_z\) nel sigillo è assunto ~0, coerente con il modello di flusso radiale puro in regime lubrificato (il flusso si “distribuisce” radialmente, senza penetrazione in z).
-  \item All'esterno del disco (\(r > R\)) la pressione è posta uguale a quella ambiente (\(p=0\)) e le velocità sono nulle.
+  \item \(R_{\mathrm{tot}}\): raggio totale del disco, pari al raggio esterno della corona;
+  \item \(w\): larghezza della corona, tale che il raggio interno del cuscino centrale sia \(R_i = R_{\mathrm{tot}} - w\);
+  \item \(h\): altezza del disco rispetto al suolo, ossia distanza della faccia inferiore di contatto del cuscino;
+  \item \(\dot{m}_{\mathrm{in}}\): portata massica d'aria che entra nella zona centrale dal getto o dal sistema di alimentazione;
+  \item \(\dot{m}_{\mathrm{corona}}\): portata massica che percorre la corona periferica e getta radialmente in uscita;
+  \item \(\dot{m}_{\mathrm{loss}}\): portata massica che fuoriesce radialmente dal bordo esterno senza contribuire al cuscino centrale (perdita laterale).
 \end{itemize}
 
-\section{Equazioni implementate}
+\section{Equazioni fondamentali}
 
-\subsection{Pressione richiesta per la portanza}
-Per sostenere un carico \(m\):
+\subsection{Pressione portante nel cuscino centrale}
+L'area effettiva che genera portanza è quella del disco di raggio \(R_i\); la pressione centrale necessaria a sostenere un carico utile \(m\) è
+\begin{equation}
+  p_c = \frac{m g}{\pi R_i^2}.
+\end{equation}
+
+\subsection{Bilancio di massa nella zona centrale}
+Assumendo stazionarietà e che la corona non entri nel flusso del cuscino centrale,
+\begin{equation}
+  \dot{m}_{\mathrm{in}} = \dot{m}_{\mathrm{loss}}.
+\end{equation}
+Questo equilibrio garantisce che la pressione rimanga stabile nella regione interna.
+
+\subsection{Portata nella corona periferica}
+La corona è modellata come un getto anulare di spessore \(t\) (fessura) a raggio \(R_i\). La portata massica nella corona è
+\begin{equation}
+  \dot{m}_{\mathrm{corona}} = \rho \, (2\pi R_i\, t)\, V_{\mathrm{jet}},
+\end{equation}
+dove \(V_{\mathrm{jet}}\) è la velocità del getto nella corona.
+
+\subsection{Perdita laterale al bordo esterno}
+Nel punto \(r = R_{\mathrm{tot}}\) l'aria può uscire verso l'ambiente (\(p=0\)). Si adottano due modelli.
+
+\paragraph{Modello orifizio (inerziale).}
+Se il flusso è dominato da effetti dinamici,
+\begin{equation}
+  A_e = 2\pi R_{\mathrm{tot}}\, h, 
+  \qquad
+  \dot{m}_{\mathrm{loss}} = \rho\, C_d\, A_e \sqrt{\frac{2 p_c}{\rho}}
+  = C_d\, (2\pi R_{\mathrm{tot}}\, h)\, \sqrt{2\,\rho\,p_c}.
+\end{equation}
+
+\paragraph{Modello di lubrificazione (viscoso).}
+Se il flusso è dominato da attrito viscoso in una fuga radiale,
+\begin{equation}
+  Q_{\mathrm{loss}} = \frac{\pi\, h^3\, p_c}{6\,\mu\, \ln\!\left(\tfrac{R_{\mathrm{tot}}}{R_i}\right)}, 
+  \qquad
+  \dot{m}_{\mathrm{loss}} = \rho\, Q_{\mathrm{loss}}.
+\end{equation}
+
+La scelta fra i due modelli dipende dal numero di Reynolds nel gap \(h\).
+
+\subsection{Potenza ideale minima}
+La potenza ideale richiesta per il cuscino è
+\begin{equation}
+  P_{\mathrm{cuscino}}^{\mathrm{ideal}} = p_c\, Q_{\mathrm{in}} = p_c\, \frac{\dot{m}_{\mathrm{in}}}{\rho}.
+\end{equation}
+La potenza cinetica del getto nella corona (facoltativa) è
+\begin{equation}
+  P_{\mathrm{jet}} = \tfrac12 \dot{m}_{\mathrm{corona}}\, V_{\mathrm{jet}}^2.
+\end{equation}
+
+\section{Criteri di scelta del modello}
+Il criterio pratico per distinguere i due regimi si basa sul numero di Reynolds:
+\begin{equation}
+  Re = \frac{\rho U h}{\mu}.
+\end{equation}
 \[
-p_c = \frac{m g}{\pi R^2}.
+\begin{cases}
+Re \gg 2000 & \text{modello orifizio (inerziale)},\\
+Re \lesssim 2000 & \text{modello di lubrificazione (viscoso)}.
+\end{cases}
 \]
 
-\subsection{Portata \(Q\) nel tratto di sigillo — regime vischioso (lubrificazione)}
-Nella zona sigillo \(R - w \le r \le R\), si assume:
-\[
-\bar u(r) = -\frac{h_{\mathrm{eff}}^2}{12\,\mu}\,\frac{dp}{dr}, \qquad
-Q = 2\pi\,r\,h_{\mathrm{eff}}\,\bar u(r).
-\]
-Da qui:
-\[
-\frac{dp}{dr} = -\frac{6\,\mu\,Q}{\pi\,r\,h_{\mathrm{eff}}^3}.
-\]
-Integrando da \(r = R-w\) (dove \(p = p_c\)) fino a \(r = R\) (dove \(p = 0\)):
-\[
-p_c = \frac{6\,\mu\,Q}{\pi\,h_{\mathrm{eff}}^3} \ln\!\frac{R}{R-w}
-\quad\Longrightarrow\quad
-Q = \frac{\pi\,h_{\mathrm{eff}}^3\,p_c}{6\,\mu\,\ln\!\left(\tfrac{R}{R-w}\right)}.
-\]
-La potenza aerodinamica ideale è:
-\[
-P_{\mathrm{ideal}} = p_c\,Q.
-\]
-
-\subsection{Costruzione dei campi 2D}
-Il codice costruisce una griglia \((r,z)\) con \(r\) da \(0\) a \(R + w\) e \(z\) da \(0\) a \(h_c\).  
-Si definiscono tre regioni tramite maschere logiche:
+\section{Considerazioni e sviluppi}
+Sono trascurati gli effetti di compressibilità, l'interazione tra getto di corona e cuscino, le perdite locali e la non planarità del suolo.
+Nei prossimi sviluppi si potranno:
 \begin{itemize}
-  \item \(\text{mask}_{\mathrm{interior}}\): \(r \le R - w\), \(z \le h_c\). In questa zona \(p = p_c\), \(u_r = 0\), \(u_z = 0\).
-  \item \(\text{mask}_{\mathrm{seal}}\): \(R - w < r \le R\), \(z \le h_{\mathrm{eff}}\). In questa zona:
-  \[
-  p(r,z) = p_c - \underbrace{\frac{6\,\mu\,Q}{\pi\,h_{\mathrm{eff}}^3}}_{\text{costante}} \ln\!\frac{r}{R-w},
-  \]
-  \[
-  u_r(r,z) = 6\,\bar u(r)\,\phi\,(1 - \phi), \quad \phi = \frac{z}{h_{\mathrm{eff}}}, \qquad u_z(r,z) \approx 0.
-  \]
-  \item \(\text{mask}_{\mathrm{outside}}\): \(r > R\). In questa zona \(p = 0\), \(u_r = u_z = 0\).
+  \item implementare simulazioni numeriche per varie configurazioni geometriche;
+  \item generare mappe di pressione e velocità coerenti con il modello scelto;
+  \item introdurre un air--curtain per ridurre \(\dot{m}_{\mathrm{loss}}\) e migliorare la stabilità.
 \end{itemize}
 
-\noindent Dove \(\bar u(r)\) è la velocità media radiale:
-\[
-\bar u(r) = \frac{Q}{2\pi\,r\,h_{\mathrm{eff}}}.
-\]
-
-Con queste formulazioni, il codice produce:
-\begin{itemize}
-  \item il plot della geometria (sezione \(r\)–\(z\)) con indicazione del disco, labbro e zona di sigillo;
-  \item il plot con tre subplot (colormap) per \(p(r,z)\), \(u_r(r,z)\), \(u_z(r,z)\).
-\end{itemize}
-
-\section{Risultati d'esempio}
-Con i parametri tipici:
-\[
-R = 1.0\,\text{m}, \quad w = 0.05\,\text{m}, \quad h_{\mathrm{eff}} = 0.03\,\text{m}, \quad m = 40\,\mathrm{kg},
-\]
-il codice stampa i valori di \(p_c\), \(Q\) e \(P_{\mathrm{ideal}}\), e salva i file immagine in \texttt{figs/geometry.png} e \texttt{figs/fields\_tripanel.png}.
-
-\section{Possibili estensioni}
-\begin{itemize}
-  \item Passare al regime orifizio (modello con \(\mathrm{Cd}\)) e generare un campo di pressione/velocità coerente con quel regime.
-  \item Inserire un termine di alimentazione (o risucchio) che generi un componente \(u_z \neq 0\), più realistico per l'azione della corona.
-  \item Modellare un doppio sigillo (corona interna + corona esterna) con slot di risucchio.
-  \item Tenere conto di effetti di compressibilità, perdite locali, turbolenza e variazione del gap in funzione della quota.
-  \item Estendere il modello a condizioni non piane del suolo o offset verticali variabili.
-\end{itemize}
+% -------------------------------------------------
+% BibTeX: elimina l'avviso "I found no \citation commands"
+% (usa il tuo tex/refs.bib esistente)
+% -------------------------------------------------
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{refs}
 
 \end{document}
