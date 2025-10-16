@@ -1,7 +1,7 @@
 % !TEX program = pdflatex
 \documentclass[11pt,a4paper]{article}
 
-% --- packages (kept minimal and standard) ---
+% --- packages ---
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -26,155 +26,123 @@
 
 \begin{abstract}
 This work presents a physical model and an operational design methodology for a hovering disc sustained by two concentric air jets.
-The outer annular jet forms an aerodynamic curtain that confines the inner flow and minimizes leakage, whereas the inner jet compensates the residual mass loss to maintain a controlled cushion pressure beneath the disc. The paper states the governing equations for lift balance, leakage through the peripheral gap, and curtain dynamics (momentum balance and flow split), and provides a step-by-step sizing procedure to achieve stable hovering with minimum power. Finally, a dedicated section shows the simulation outputs produced by the accompanying Python script, loading figures from a common directory.
+The outer annular jet forms an aerodynamic curtain that confines the inner flow and minimizes leakage, whereas the inner jet compensates the residual mass loss to maintain a controlled cushion pressure beneath the disc. We state the governing equations for lift balance, leakage through the peripheral gap, and curtain dynamics, and we provide a step-by-step sizing procedure. We additionally introduce a \emph{non-dimensionalization strategy} for the compressible, axisymmetric core model so that simulation outputs (pressure and velocities) can be plotted and compared in non-dimensional form, independent of specific parameter choices.
 \end{abstract}
 
 \section{Introduction and Operating Principle}
-The device is a rigid circular disc of radius $R$ hovering at a distance $h$ from the ground by sustaining a nearly uniform overpressure $p_c$ in the central cushion region. Two coaxial jets are employed (Fig.~\ref{fig:geometry}): an \emph{outer annular jet} (``corona'') acting as an air curtain that seals and recirculates the cushion flow, and an \emph{inner jet} that compensates for the residual mass leakage across the peripheral gap.
-The design goal is to select geometry and jet operating points so that the target payload $W$ is carried with acceptable power and stability margins.
+The device is a rigid circular disc of total radius $R_{\text{tot}}$ hovering at a distance $h$ from the ground by sustaining an overpressure $p_c$ in the central region. Two coaxial jets are employed (Fig.~\ref{fig:geometry}): an \emph{outer annular jet} (``corona'') acting as an air curtain that seals and recirculates the cushion flow, and an \emph{inner jet} that compensates residual mass leakage across the periphery.
 
 \section{Geometry and Notation}
 We adopt the following notation, consistent with the schematic in Fig.~\ref{fig:geometry}:
 \begin{itemize}
-  \item $R$ disc radius; $w$ ring width of the leakage annulus near the rim ($R-w\le r\le R$);
-  \item $h$ nominal clearance to the ground; $h_{\mathrm{eff}}$ effective leakage height at the rim (may be smaller than $h$ due to the curtain and flow turning);
-  \item $p_c$ cushion overpressure (assumed uniform);
-  \item Outer jet (\textit{corona}): mass flow $\dot m_{\mathrm{corona}}$, slot thickness $b$, slot area $A_{\mathrm{corona}}=2\pi R\,b$, exit speed $U_{\mathrm{corona}}=\dot m_{\mathrm{corona}}/(\rho A_{\mathrm{corona}})$;
-  \item Inner jet: mass flow $\dot m_{\mathrm{in}}$;
-  \item Mass loss from the cushion across the periphery: $\dot m_{\mathrm{loss}}$; volumetric loss $Q_{\mathrm{loss}}=\dot m_{\mathrm{loss}}/\rho$.
+  \item $R_{\text{tot}}$ total radius; $w$ leakage-ring width; $R^-=R_{\text{tot}}-w$ inner edge of the ring;
+  \item $h$ nominal clearance; $p_c=W/(\pi R_{\text{tot}}^2)$ target cushion overpressure;
+  \item Outer jet: slot thickness $b$, area $A_\mathrm{corona}=2\pi R_{\text{tot}}\,b$, speed $U_\mathrm{corona}$, jet density $\rho_j$;
+  \item Inner jet: mass flow $\dot m_\mathrm{in}$; leakage $\dot m_\mathrm{loss}$ with $Q_\mathrm{loss}=\dot m_\mathrm{loss}/\rho_\mathrm{edge}$.
 \end{itemize}
+
 \begin{figure}[t]
   \centering
-  % Note: figures are loaded from ../figs/ as per repository layout
   \includegraphics[width=0.95\linewidth]{../figs/schema_geometry.png}
-  \caption{Geometric scheme (axes of symmetry, annulus width $w$, hover height $h$) and the two concentric jets: inner make-up flow $\dot m_{\mathrm{in}}$ and outer annular jet $\dot m_{\mathrm{corona}}$ forming the air curtain that reduces leakage $\dot m_{\mathrm{loss}}$.}
+  \caption{Geometry and notation. Figures produced by the Python script are saved under \texttt{../figs/}.}
   \label{fig:geometry}
 \end{figure}
 
-\section{Lift Balance}
-The hovering condition is set by the pressure force over the planform area:
+\section{Core Model (Design-Oriented)}
+We use an anisotropic Stokes--Darcy closure for the mean core flow (low-Mach, no swirl):
 \begin{equation}
-  p_c\,\pi R^2 = W
-  \quad \Rightarrow \quad
-  p_c = \frac{W}{\pi R^2}.
-  \label{eq:lift}
+  u = -\frac{\kappa_r}{\mu}\,\partial_r p,\qquad
+  w = -\frac{\kappa_z}{\mu}\,\partial_z p,\qquad
+  \kappa_r=\alpha_r h^2,\ \kappa_z=\alpha_z h^2,
+  \label{eq:darcy}
 \end{equation}
-Equation~\eqref{eq:lift} defines the target cushion pressure for a given payload.
+with compressible continuity
+\begin{equation}
+  \frac{1}{r}\,\partial_r\!\big(r\,\rho\,u\big)+\partial_z(\rho\,w)=0,\qquad
+  p=\rho R_g T.
+  \label{eq:cont_state}
+\end{equation}
+Eliminating $(u,w)$ yields the elliptic pressure problem on the core domain $r\in[0,R^-]$, $z\in[0,h]$:
+\begin{equation}
+  \frac{1}{r}\,\partial_r\!\big(r\,\rho\,\kappa_r\,\partial_r p\big)+\partial_z\!\big(\rho\,\kappa_z\,\partial_z p\big)=0,
+  \label{eq:elliptic_dim}
+\end{equation}
+with boundary conditions: symmetry at $r=0$ ($\partial_r p=0$), no-normal-flow at $z=0$ and $z=h$ ($\partial_z p=0$ for the Darcy closure), and sealing pressure at the rim $r=R^-$,
+\begin{equation}
+  p_\mathrm{edge}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),
+  \qquad \Delta p = C_t\,\frac{\rho_j U_\mathrm{corona}^2\,b}{h_\mathrm{eff}},
+  \label{eq:rim_bc}
+\end{equation}
+with a prescribed vertical distribution $\Phi(\zeta)$ (e.g.\ increasing in $\zeta$ to enforce downward core flow, $w<0$).
 
-\section{Leakage Through the Peripheral Gap}
-The peripheral annulus governs the mass loss $\dot m_{\mathrm{loss}}$. Two regimes are considered; the applicable model is selected based on the local Reynolds number $\mathrm{Re}_h=\rho U_h h_{\mathrm{eff}}/\mu$, with $U_h\approx Q_{\mathrm{loss}}/(2\pi R h_{\mathrm{eff}})$.
-
-\subsection*{Viscous (lubrication) regime}
+\section{Non-Dimensionalization}
+Define dimensionless coordinates and fields
 \begin{equation}
-  Q_{\mathrm{loss}}
-  = \frac{\pi h_{\mathrm{eff}}^{3}\,p_c}{6\,\mu\,\ln\!\big(\tfrac{R}{R-w}\big)},
-  \qquad \dot m_{\mathrm{loss}}=\rho\,Q_{\mathrm{loss}}.
-  \label{eq:qloss_lub}
+  \hat r=\frac{r}{R_{\text{tot}}},\quad
+  \hat z=\frac{z}{h},\quad
+  \hat p=\frac{p-p_0}{p_c},\quad
+  \hat T=\frac{T}{T_\infty},
+  \label{eq:nondim_vars}
 \end{equation}
-
-\subsection*{Inertial (orifice) regime}
-Let $A_{\mathrm{eff}}=2\pi R\,h_{\mathrm{eff}}$:
+and $\rho_\infty=p_0/(R_g T_\infty)$, so
 \begin{equation}
-  Q_{\mathrm{loss}}
-  = C_d\,A_{\mathrm{eff}}\,\sqrt{\frac{2\,p_c}{\rho}},
-  \qquad \dot m_{\mathrm{loss}}=\rho\,Q_{\mathrm{loss}}.
-  \label{eq:qloss_orif}
+  \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\qquad
+  \Pi_p=\frac{p_c}{p_0}.
+  \label{eq:rho_hat}
 \end{equation}
-In transitional conditions a smooth interpolation between \eqref{eq:qloss_lub} and \eqref{eq:qloss_orif} can be used.
-
-\section{Air-Curtain (Outer Jet) Dynamics}
-The outer annular jet is turned near the rim and forms a wall-jet that seals the cushion.
-A momentum balance across a thin control volume of height $h_{\mathrm{eff}}$ at the rim gives the curtain condition
+Introduce the anisotropy and geometry parameters
 \begin{equation}
-  p_c \simeq C_t\,\frac{\rho U_{\mathrm{corona}}^{2} \, b}{h_{\mathrm{eff}}},
-  \label{eq:curtain_force}
+  \mathcal{A}=\frac{\kappa_z/h^2}{\kappa_r/R_{\text{tot}}^2}
+  =\frac{\alpha_z}{\alpha_r}\left(\frac{R_{\text{tot}}}{h}\right)^2,\qquad
+  \hat R^-=\frac{R^-}{R_{\text{tot}}}.
+  \label{eq:A_param}
 \end{equation}
-where $C_t=\mathcal{O}(1)$ collects turning and wall-jet losses.
-It is convenient to define the nondimensional momentum ratio
+Then the non-dimensional elliptic equation is
 \begin{equation}
-  J\;\equiv\; \frac{\rho U_{\mathrm{corona}}^{2}\,b}{p_c\,h_{\mathrm{eff}}}
-  \quad \text{with} \quad J\gtrsim J_{\min}=1/C_t.
-  \label{eq:J}
+  \boxed{\
+  \frac{1}{\hat r}\,\partial_{\hat r}\!\Big(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\Big)
+  + \mathcal{A}\,\partial_{\hat z}\!\Big(\hat\rho\,\partial_{\hat z}\hat p\Big)=0,\quad
+  (\hat r,\hat z)\in[0,\hat R^-]\times[0,1].\ }
+  \label{eq:elliptic_hat}
 \end{equation}
-Given $J$ (design margin), the required outer-jet speed and mass flow follow from $U_{\mathrm{corona}}=\sqrt{J\,p_c h_{\mathrm{eff}}/(\rho b)}$ and
+Boundary conditions:
 \begin{equation}
-  \dot m_{\mathrm{corona}} = \rho\,A_{\mathrm{corona}}\,U_{\mathrm{corona}}
-  = 2\pi R\,\rho\,b\,\sqrt{\frac{J\,p_c h_{\mathrm{eff}}}{\rho b}}
-  = 2\pi R\,\sqrt{\rho\,p_c}\; b\,\sqrt{\frac{J h_{\mathrm{eff}}}{b}}.
-  \label{eq:mcorona}
+  \partial_{\hat r}\hat p(0,\hat z)=0,\quad
+  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\quad
+  \hat p(\hat R^-,\hat z)=\hat p_\mathrm{edge}(\hat z)=\Pi_\mathrm{edge}\,\Phi(\hat z),
+  \label{eq:BC_hat}
 \end{equation}
-
-\subsection*{Flow split of the outer jet}
-The wall-jet entrains fluid on both sides.
-A fraction $\beta\in[0,1]$ of $\dot m_{\mathrm{corona}}$ turns inward and reinforces the cushion; the remainder leaves outward:
+with the dimensionless rim amplitude
 \begin{equation}
-  \dot m_{\mathrm{rein}}=\beta\,\dot m_{\mathrm{corona}},\qquad
-  \dot m_{\mathrm{out}}=(1-\beta)\,\dot m_{\mathrm{corona}}.
-  \label{eq:split}
-\end{equation}
-In design, $\beta$ may be treated as a function of the curtain strength and geometry.
-A practical closed form, to be calibrated, is
-\begin{equation}
-  \beta = \frac{1}{1+\gamma\,(h_{\mathrm{eff}}/b)\,J^{-1/2}},\qquad \gamma=\mathcal{O}(1),
-  \label{eq:beta}
-\end{equation}
-which increases towards unity as the curtain becomes stronger (larger $J$) and the slot is thinner.
-
-\section{Cushion Mass Balance and Make-Up Flow}
-Assuming a well-mixed cushion, stationarity requires
-\begin{equation}
-  \dot m_{\mathrm{in}} + \dot m_{\mathrm{rein}} = \dot m_{\mathrm{loss}}
-  \quad \Rightarrow \quad
-  \boxed{\ \dot m_{\mathrm{in}} = \dot m_{\mathrm{loss}} - \beta\,\dot m_{\mathrm{corona}}\ }.
-  \label{eq:massbalance}
+  \Pi_\mathrm{edge}=\frac{p_\mathrm{edge}-p_0}{p_c}
+  =\frac{C_t\,\rho_j U_\mathrm{corona}^2\,b}{h_\mathrm{eff}\,p_c}.
+  \label{eq:Pi_edge}
 \end{equation}
 
-\section{Power Estimates}
-The ideal aerodynamic power is the sum of the cushion power and the jet kinetic power:
+\paragraph{Non-dimensional velocities and plotting.}
+Natural velocity scales from \eqref{eq:darcy} are
 \begin{equation}
-  P_{\mathrm{ideal}} \approx p_c\,Q_{\mathrm{loss}} + \frac{\dot m_{\mathrm{corona}}\,U_{\mathrm{corona}}^{2}}{2}.
-  \label{eq:power}
+  U_r^0=\frac{\kappa_r}{\mu}\,\frac{p_c}{R_{\text{tot}}},\qquad
+  U_z^0=\frac{\kappa_z}{\mu}\,\frac{p_c}{h},\qquad
+  S=\frac{U_z^0}{U_r^0}=\frac{\alpha_z}{\alpha_r}\,\frac{R_{\text{tot}}}{h}.
+  \label{eq:U_scales}
 \end{equation}
-With overall efficiency $\eta$ (blower + ducts), the shaft/electrical power is $P=P_{\mathrm{ideal}}/\eta$.
+Define
+\begin{equation}
+  \hat u=-\partial_{\hat r}\hat p,\qquad
+  \hat w=-\partial_{\hat z}\hat p.
+  \label{eq:vel_hat}
+\end{equation}
+For quiver with isotropic scaling in the plot plane, use vectors $(\hat u,\,S\,\hat w)$.
+Report colormaps of $\hat p$, $|\hat u|$, $|\hat w|$, and optionally
+\begin{equation}
+  \hat V_{\mathrm{iso}}=\sqrt{\hat u^{\,2}+S^{2}\hat w^{\,2}}.
+\end{equation}
+Axes must be labeled $\hat r\in[0,\hat R^-]$ and $\hat z\in[0,1]$; colorbars are non-dimensional.
 
-% ------------------------------------------------------------------
-\section{Simulation Outputs}
-This section loads the figures saved by the Python script \texttt{scripts/run\_sim.py} into the shared directory \texttt{../figs/}.
-Each figure includes a vertical line at $r=R^-=R-w$ as a visual reference.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{../figs/quiver_velocity.png}
-  \caption{Velocity field (quiver) over the $(r,z)$ domain; downward vertical components (negative $z$) reflect the purely vertical jet condition at $z=h$.}
-  \label{fig:quiver}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{../figs/cmap_speed.png}
-  \caption{Colormap of speed magnitude $\lvert \mathbf{v}\rvert$.}
-  \label{fig:cmap_speed}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{../figs/cmap_ur.png}
-  \caption{Colormap of radial component magnitude $\lvert u_r\rvert$.}
-  \label{fig:cmap_ur}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{../figs/cmap_uz.png}
-  \caption{Colormap of axial component magnitude $\lvert u_z\rvert$.}
-  \label{fig:cmap_uz}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{../figs/cmap_pressure.png}
-  \caption{Colormap of pressure $p(r,z)$.}
-  \label{fig:cmap_p}
-\end{figure}
+\section{Simulation Outputs (from \texttt{../figs/})}
+Once the Python script is updated to emit non-dimensional fields, figures should be saved under \texttt{../figs/} with labels indicating hatted quantities, e.g. \texttt{cmap\_p\_hat.png}, \texttt{cmap\_u\_hat.png}, \texttt{cmap\_w\_hat.png}, and a quiver using $(\hat u,S\hat w)$.
+The vertical reference at $\hat r=\hat R^-$ should be drawn in every plot.
+Existing dimensional figures can still be shown; the non-dimensional ones enable parameter-agnostic comparison across runs.
 
 \end{document}
