@@ -1,143 +1,141 @@
+% !TEX program = pdflatex
 \documentclass[11pt,a4paper]{article}
 
-% -------------------------------------------------
-% Pacchetti
-% -------------------------------------------------
-\usepackage[margin=2.5cm]{geometry}
+% --- packages (kept minimal and standard) ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=1in}
 \usepackage{amsmath,amssymb}
 \usepackage{siunitx}
 \usepackage{graphicx}
-\usepackage{microtype} % aiuta a ridurre Overfull/Underfull hbox
-\usepackage{caption}
-\usepackage{subcaption}
+\usepackage[font=small,labelfont=bf,labelsep=endash]{caption}
+\usepackage{booktabs}
+\usepackage{physics}
 \usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 
-% Impostazioni didascalie: evita righe troppo piene
-\captionsetup{format=plain,justification=raggedright,singlelinecheck=false}
-
-\title{Hover Disc a 20\,cm: Approccio Energetico con Cuscino Centrale e Getto di Corona}
-\author{}
-\date{\today}
+% --- title & author ---
+\title{Design Methodology for a Dual-Jet Hovering Disc Using Concentric Air Curtains}
+\author{ }
+\date{ }
 
 \begin{document}
 \maketitle
 
-\section{Schema e dominio di calcolo}
+\begin{abstract}
+This work presents a physical model and an operational design methodology for a hovering disc sustained by two concentric air jets. The outer annular jet forms an aerodynamic curtain that confines the inner flow and minimizes leakage, whereas the inner jet compensates the residual mass loss to maintain a controlled cushion pressure beneath the disc. The paper states the governing equations for lift balance, leakage through the peripheral gap, and curtain dynamics (momentum balance and flow split), and provides a step-by-step sizing procedure to achieve stable hovering with minimum power.
+\end{abstract}
 
-\begin{figure}[ht]
-  \centering
-  % usa \linewidth per evitare overfull dei float larghi
-  \includegraphics[width=0.8\linewidth]{./figures/schema_geometry.png}
-  % Evita math in PDF strings con \texorpdfstring
-  \caption{Schema assi-simmetrico: disco sospeso a quota \texorpdfstring{$h$}{h}, zona centrale
-  \texorpdfstring{$0\le r\le R_i$}{0≤r≤Ri} a pressione quasi uniforme \texorpdfstring{$p_c$}{pc}, corona periferica di larghezza
-  \texorpdfstring{$w$}{w} con getto radiale, portata entrante \texorpdfstring{$\dot{m}_{\mathrm{in}}$}{mdot\_in}, portata della corona
-  \texorpdfstring{$\dot{m}_{\mathrm{corona}}$}{mdot\_corona} e dispersione laterale
-  \texorpdfstring{$\dot{m}_{\mathrm{loss}}$}{mdot\_loss}. Per simmetria assiale si può considerare metà dominio.}
-  \label{fig:schemageo}
+\section{Introduction and Operating Principle}
+The device is a rigid circular disc of radius $R$ hovering at a distance $h$ from the ground by sustaining a nearly uniform overpressure $p_c$ in the central cushion region. Two coaxial jets are employed (Fig.~\ref{fig:geometry}): an \emph{outer annular jet} (``corona'') acting as an air curtain that seals and recirculates the cushion flow, and an \emph{inner jet} that compensates for the residual mass leakage across the peripheral gap. The design goal is to select geometry and jet operating points so that the target payload $W$ is carried with acceptable power and stability margins.
+
+\section{Geometry and Notation}
+We adopt the following notation, consistent with the schematic in Fig.~\ref{fig:geometry}:
+\begin{itemize}
+\item $R$ disc radius; $w$ ring width of the leakage annulus near the rim ($R-w\le r\le R$);
+\item $h$ nominal clearance to the ground; $h_{\mathrm{eff}}$ effective leakage height at the rim (may be smaller than $h$ due to the curtain and flow turning);
+\item $p_c$ cushion overpressure (assumed uniform);
+\item Outer jet (\textit{corona}): mass flow $\dot m_{\mathrm{corona}}$, slot thickness $b$, slot area $A_{\mathrm{corona}}=2\pi R,b$, exit speed $U_{\mathrm{corona}}=\dot m_{\mathrm{corona}}/(\rho A_{\mathrm{corona}})$;
+\item Inner jet: mass flow $\dot m_{\mathrm{in}}$;
+\item Mass loss from the cushion across the periphery: $\dot m_{\mathrm{loss}}$; volumetric loss $Q_{\mathrm{loss}}=\dot m_{\mathrm{loss}}/\rho$.
+\end{itemize}
+Air is treated as incompressible (valid for Mach number $<0.3$ and moderate $p_c$), and the analysis is steady in the mean.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{./figures/schema_geometry.png}
+\caption{Geometric scheme (axes of symmetry, annulus width $w$, hover height $h$) and the two concentric jets: inner make-up flow $\dot m_{\mathrm{in}}$ and outer annular jet $\dot m_{\mathrm{corona}}$ forming the air curtain that reduces leakage $\dot m_{\mathrm{loss}}$.}
+\label{fig:geometry}
 \end{figure}
 
-Il problema viene posto in termini energetici: determinare quanta potenza minima deve essere fornita per mantenere il disco a distanza \(\,h\) dal suolo con una pressione imposta \(\,p_c\) nella regione centrale
-\(\,0\le r\le R_i,\,0\le z\le h\), mentre i lati sono aperti (assenza di pareti rigide o skirt) e l'unico confinamento laterale è garantito dal getto di \emph{corona} che agisce come air--curtain. Indichiamo con \(R_{\mathrm{tot}}\) il raggio esterno, con \(w\) la larghezza della corona e con \(R_i=R_{\mathrm{tot}}-w\) il raggio interno del cuscino portante.
-
-\section{Pressione imposta e baseline energetica}
-La portanza è fornita dall'area centrale \(A_c=\pi R_i^2\). La pressione richiesta per sostenere un carico utile \(m\) è
+\section{Lift Balance}
+The hovering condition is set by the pressure force over the planform area:
 \begin{equation}
-  p_c=\frac{m g}{A_c}=\frac{m g}{\pi R_i^2}.
+p_c,\pi R^2 = W \quad \Rightarrow \quad p_c = \frac{W}{\pi R^2}.
+\label{eq:lift}
 \end{equation}
-La baseline energetica del cuscino è la potenza di flusso di pressione che entra nell'area a \(p_c\):
+Equation~\eqref{eq:lift} defines the target cushion pressure for a given payload.
+
+\section{Leakage Through the Peripheral Gap}
+The peripheral annulus governs the mass loss $\dot m_{\mathrm{loss}}$. Two regimes are considered; the applicable model is selected based on the local Reynolds number $\mathrm{Re}*h=\rho U_h h*{\mathrm{eff}}/\mu$, with $U_h\approx Q_{\mathrm{loss}}/(2\pi R h_{\mathrm{eff}})$.
+
+\subsection*{Viscous (lubrication) regime}
+For low $\mathrm{Re}*h$ the annulus behaves as a lubrication gap, yielding
 \begin{equation}
-  P_{\mathrm{cuscino}}^{\min}=p_c\,Q_{\mathrm{in}}=p_c\,\frac{\dot{m}_{\mathrm{in}}}{\rho}.
-\end{equation}
-Tutto il resto (getti, miscelazione, turbolenza, inefficienze meccaniche/elettriche) si somma a questa baseline.
-
-\section{Fuga laterale con air--curtain e altezza efficace \texorpdfstring{$h_{\mathrm{out}}$}{h\_out}}
-
-Con i lati aperti, l'aria esce radialmente alla periferia. Il getto di corona riduce l'\emph{apertura efficace} di fuga da \(h\) ad un valore \(h_{\mathrm{out}}<h\), grazie alla propria quantità di moto. Un criterio ingegneristico per legare \(h_{\mathrm{out}}\) ai parametri del curtain (fessura \(t\), velocità del getto \(V_{\mathrm{jet}}\)) è un bilancio di quantità di moto per unità di circonferenza:
-\begin{equation}
-  \rho\,V_{\mathrm{jet}}^2\,t \;\gtrsim\; \kappa\,p_c\,h_{\mathrm{out}},
-  \qquad \Rightarrow \qquad
-  h_{\mathrm{out}}\;\approx\;\frac{\rho\,V_{\mathrm{jet}}^2\,t}{\kappa\,p_c},
-  \label{eq:hout}
-\end{equation}
-con \(\kappa=\mathcal{O}(1)\) che ingloba dettagli geometrici (angolo del getto, aderenza/Coandă, turbolenza).
-
-La fuga laterale \(Q_{\mathrm{loss}}\) (quindi \(\dot{m}_{\mathrm{loss}}=\rho\,Q_{\mathrm{loss}}\)) si può modellare con due regimi, scegliendo in base al numero di Reynolds nel gap.
-
-\paragraph{Regime orifizio (inerziale).}
-Valido per \(Re\gg 2000\) nel varco al bordo:
-\begin{equation}
-  A_e=2\pi R_{\mathrm{tot}}\,h_{\mathrm{out}},\qquad
-  Q_{\mathrm{loss}}=C_d\,A_e\,\sqrt{\frac{2p_c}{\rho}},
-  \qquad
-  P_{\mathrm{cuscino}}^{\min}=p_c\,Q_{\mathrm{loss}}.
+Q*{\mathrm{loss}} = \frac{\pi h_{\mathrm{eff}}^3,p_c}{6,\mu,\ln!\big(\tfrac{R}{R-w}\big)},
+\qquad \dot m_{\mathrm{loss}}=\rho,Q_{\mathrm{loss}}.
+\label{eq:qloss_lub}
 \end{equation}
 
-\paragraph{Regime di lubrificazione (viscoso).}
-Valido per gap piccoli e \(Re\) basso (fuga radiale tra piastre distanti \(h_{\mathrm{out}}\)):
+\subsection*{Inertial (orifice) regime}
+For higher $\mathrm{Re}*h$ the leakage is dominated by inertia, modeled as an orifice with effective area $A*{\mathrm{eff}}=2\pi R,h_{\mathrm{eff}}$ and discharge coefficient $C_d$:
 \begin{equation}
-  Q_{\mathrm{loss}}=\frac{\pi\,h_{\mathrm{out}}^3\,p_c}{6\,\mu\,\ln\!\left(\tfrac{R_{\mathrm{tot}}}{R_i}\right)},
-  \qquad
-  P_{\mathrm{cuscino}}^{\min}=p_c\,Q_{\mathrm{loss}}.
+Q_{\mathrm{loss}} = C_d,A_{\mathrm{eff}},\sqrt{\frac{2,p_c}{\rho}},
+\qquad \dot m_{\mathrm{loss}}=\rho,Q_{\mathrm{loss}}.
+\label{eq:qloss_orif}
+\end{equation}
+In transitional conditions a smooth interpolation between \eqref{eq:qloss_lub} and \eqref{eq:qloss_orif} can be used.
+
+\section{Air-Curtain (Outer Jet) Dynamics}
+The outer annular jet is turned near the rim and forms a wall-jet that seals the cushion. A momentum balance across a thin control volume of height $h_{\mathrm{eff}}$ at the rim gives the curtain condition
+\begin{equation}
+p_c \simeq C_t,\frac{\rho U_{\mathrm{corona}}^{2} , b}{h_{\mathrm{eff}}},
+\label{eq:curtain_force}
+\end{equation}
+where $C_t=\mathcal{O}(1)$ collects turning and wall-jet losses. It is convenient to define the nondimensional momentum ratio
+\begin{equation}
+J;\equiv; \frac{\rho U_{\mathrm{corona}}^{2},b}{p_c,h_{\mathrm{eff}}} \quad \text{with} \quad J\gtrsim J_{\min}=1/C_t.
+\label{eq:J}
+\end{equation}
+Given $J$ (design margin), the required outer-jet speed and mass flow follow from $U_{\mathrm{corona}}=\sqrt{J,p_c h_{\mathrm{eff}}/(\rho b)}$ and
+\begin{equation}
+\dot m_{\mathrm{corona}} = \rho,A_{\mathrm{corona}},U_{\mathrm{corona}} = 2\pi R,\rho,b,\sqrt{\frac{J,p_c h_{\mathrm{eff}}}{\rho b}} = 2\pi R,\sqrt{\rho p_c}; b,\sqrt{\frac{J h_{\mathrm{eff}}}{b}}.
+\label{eq:mcorona}
 \end{equation}
 
-\section{Costo energetico del curtain}
-La corona è un getto anulare a raggio \(R_i\) con fessura \(t\). La sua portata e potenza cinetica (ideale) sono:
+\subsection*{Flow split of the outer jet}
+The wall-jet entrains fluid on both sides. A fraction $\beta\in[0,1]$ of $\dot m_{\mathrm{corona}}$ turns inward and reinforces the cushion; the remainder leaves outward:
 \begin{equation}
-  \dot{m}_{\mathrm{corona}}=\rho\,(2\pi R_i\,t)\,V_{\mathrm{jet}},
-  \qquad
-  P_{\mathrm{jet}}=\tfrac{1}{2}\,\dot{m}_{\mathrm{corona}}\,V_{\mathrm{jet}}^2.
+\dot m_{\mathrm{rein}}=\beta,\dot m_{\mathrm{corona}},\qquad \dot m_{\mathrm{out}}=(1-\beta),\dot m_{\mathrm{corona}}.
+\label{eq:split}
 \end{equation}
-L'air--curtain \emph{non} entra nel bilancio di massa della regione centrale (che resta \(\dot{m}_{\mathrm{in}}=\dot{m}_{\mathrm{loss}}\)), ma determina \(h_{\mathrm{out}}\) via \eqref{eq:hout} e quindi abbassa \(Q_{\mathrm{loss}}\) e \(P_{\mathrm{cuscino}}^{\min}\).
-
-\section{Potenza totale minima e criterio di regime}
-La potenza minima ideale di sistema (fluido) è la somma:
+In design, $\beta$ may be treated as a function of the curtain strength and geometry. A practical closed form, to be calibrated, is
 \begin{equation}
-  P_{\mathrm{tot}}^{\min}=P_{\mathrm{cuscino}}^{\min}+P_{\mathrm{jet}}.
+\beta = \frac{1}{1+\gamma,(h_{\mathrm{eff}}/b),J^{-1/2}},\qquad \gamma=\mathcal{O}(1),
+\label{eq:beta}
 \end{equation}
-Per scegliere il modello di perdita, usiamo \(Re=\tfrac{\rho U h_{\mathrm{out}}}{\mu}\) con una stima della velocità caratteristica \(U\) al bordo:
-\[
-\text{se }Re\gg 2000 \ \Rightarrow\ \text{orifizio (inerziale)},\qquad
-\text{altrimenti}\ \Rightarrow\ \text{lubrificazione (viscoso)}.
-\]
-La potenza elettrica reale richiederà \(P_{\mathrm{elettrica}}\approx P_{\mathrm{tot}}^{\min}/\eta\) con \(\eta\) efficienza globale (ventilatori, condotti, driver).
+which increases towards unity as the curtain becomes stronger (larger $J$) and the slot is thinner.
 
-\section{Procedura rapida di progetto}
+\section{Cushion Mass Balance and Make-Up Flow}
+Assuming a well-mixed cushion, stationarity requires
+\begin{equation}
+\dot m_{\mathrm{in}} + \dot m_{\mathrm{rein}} = \dot m_{\mathrm{loss}} \quad \Rightarrow \quad \boxed{;\dot m_{\mathrm{in}} = \dot m_{\mathrm{loss}} - \beta,\dot m_{\mathrm{corona}};},
+\label{eq:massbalance}
+\end{equation}
+with $\dot m_{\mathrm{loss}}$ from \eqref{eq:qloss_lub} or \eqref{eq:qloss_orif} and $\dot m_{\mathrm{corona}}$ from \eqref{eq:mcorona}.
+
+\section{Power Estimates}
+The ideal aerodynamic power is the sum of the cushion power and the jet kinetic power:
+\begin{equation}
+P_{\mathrm{ideal}} \approx p_c,Q_{\mathrm{loss}} + \frac{\dot m_{\mathrm{corona}},U_{\mathrm{corona}}^{2}}{2}.
+\label{eq:power}
+\end{equation}
+With overall efficiency $\eta$ (blower + ducts), the shaft/electrical power is $P=P_{\mathrm{ideal}}/\eta$.
+
+\section{Operational Sizing Procedure}
+Given payload $W$ and chosen geometry $R,,h,,w,,b$:
 \begin{enumerate}
-  \item Fissa \(R_{\mathrm{tot}}, R_i\) (quindi \(w\)), \(h\), \(m\) \(\Rightarrow\) calcola \(p_c\).
-  \item Scegli \(t\) e \(V_{\mathrm{jet}}\) \(\Rightarrow\) calcola \(h_{\mathrm{out}}\) con \eqref{eq:hout}.
-  \item Seleziona il regime (Re) e calcola \(Q_{\mathrm{loss}}(h_{\mathrm{out}})\) \(\Rightarrow\)
-        \(P_{\mathrm{cuscino}}^{\min}=p_c\,Q_{\mathrm{loss}}\).
-  \item Calcola \(\dot{m}_{\mathrm{corona}}, P_{\mathrm{jet}}\) \(\Rightarrow\) \(P_{\mathrm{tot}}^{\min}\).
-  \item Ottimizza \(t, V_{\mathrm{jet}}, w\) per minimizzare \(P_{\mathrm{tot}}^{\min}\) garantendo \(h_{\mathrm{out}}\ll h\).
+\item Compute $p_c$ from Eq.~\eqref{eq:lift}.
+\item Select the leakage model (\S,\ref{eq:qloss_lub}--\ref{eq:qloss_orif}) by evaluating $\mathrm{Re}*h$; obtain $Q*{\mathrm{loss}}(p_c,h_{\mathrm{eff}})$ and $\dot m_{\mathrm{loss}}$.
+\item Choose a curtain margin $J\in[2,5]$ (or equivalently $C_t$); compute $U_{\mathrm{corona}}$ and $\dot m_{\mathrm{corona}}$ from \eqref{eq:curtain_force}--\eqref{eq:mcorona}.
+\item Estimate the inward fraction $\beta$ using \eqref{eq:beta} (or treat it as a design parameter).
+\item Close the mass balance via Eq.~\eqref{eq:massbalance} to obtain the required inner make-up flow $\dot m_{\mathrm{in}}$. If $\dot m_{\mathrm{in}}<0$, the curtain already oversupplies the cushion; reduce $J$ or $b$.
+\item Evaluate power with Eq.~\eqref{eq:power}; iterate on $h_{\mathrm{eff}}$, $b$, $J$, and $w$ to minimize $P$ subject to stability ($J\ge J_{\min}$) and constraints on wall-jet velocities near the ground.
 \end{enumerate}
 
-\section{Esempio numerico (ordine di grandezza)}
-Sia \(R_{\mathrm{tot}}=\SI{1.00}{m}\), \(w=\SI{0.05}{m}\) \(\Rightarrow R_i=\SI{0.95}{m}\); \(h=\SI{0.20}{m}\); \(m=\SI{40}{kg}\).
-Aria: \(\rho=\SI{1.2}{kg/m^3}\), \(\mu=\SI{1.8e-5}{Pa\,s}\).
-Corona: \(t=\SI{1.0}{mm}\), \(V_{\mathrm{jet}}=\SI{60}{m/s}\), \(\kappa=1.3\), \(C_d=0.65\).
-\[
-A_c=\pi R_i^2=\SI{2.835}{m^2},\quad
-p_c=\frac{mg}{A_c}\approx \SI{138}{Pa}.
-\]
-\[
-h_{\mathrm{out}}\approx\frac{\rho V_{\mathrm{jet}}^2 t}{\kappa p_c}
-\approx \SI{0.024}{m}.
-\]
-\[
-A_e=2\pi R_{\mathrm{tot}} h_{\mathrm{out}}\approx \SI{0.151}{m^2},\quad
-Q_{\mathrm{loss}}=C_d A_e\sqrt{\tfrac{2p_c}{\rho}}\approx \SI{1.50}{m^3/s}.
-\]
-\[
-P_{\mathrm{cuscino}}^{\min}=p_c Q_{\mathrm{loss}}\approx \SI{0.21}{kW}.
-\]
-\[
-\dot{m}_{\mathrm{corona}}=\rho (2\pi R_i t) V_{\mathrm{jet}}\approx \SI{0.43}{kg/s},\quad
-P_{\mathrm{jet}}=\tfrac12 \dot{m}_{\mathrm{corona}} V_{\mathrm{jet}}^2\approx \SI{0.77}{kW}.
-\]
-\[
-P_{\mathrm{tot}}^{\min}\approx \SI{0.98}{kW}\quad(\text{fluido, ideale}).
-\]
-Con efficienza complessiva \(\eta\in[0.5,0.65]\), attesi \(\sim \SI{1.5}{kW} - \SI{2.0}{kW}\) elettrici.
+\section{Calibration Parameters}
+Three lumped parameters are to be validated experimentally on the target geometry: (i) the turning/wall-jet factor $C_t$ in \eqref{eq:curtain_force}, (ii) the inward fraction law $\beta$ (or its parameter $\gamma$) in \eqref{eq:beta}, and (iii) the discharge coefficient $C_d$ for the inertial leakage in \eqref{eq:qloss_orif}. Small-scale tests measuring $p_c$ and flow rates under controlled changes of $J$, $b$, and $h$ are sufficient to identify these constants for predictive design.
 
 \end{document}
