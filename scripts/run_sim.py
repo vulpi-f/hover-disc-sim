@@ -1,28 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hover Disc 2D Axisymmetric Core Solver (updated to match LaTeX assumptions)
-============================================================================
+Hover Disc 2D Axisymmetric Core Solver — consistent with LaTeX and sign conventions
+===================================================================================
+Domain: r ∈ [0, R_minus], z ∈ [0, h], with ground at z=0 and disc underside at z=h.
+Both jets (inner and corona) are purely vertical **downward** at z = h (towards negative z).
+In the core-only model (Option A in the LaTeX), we do not explicitly impose the inlet
+velocity; instead, the turned outer jet is projected as a pressure boundary at r = R^-.
+To obtain a **downward** vertical component inside the core (w < 0), the model must
+produce ∂p/∂z > 0 (pressure increasing with z), because w = -(kz/μ) ∂p/∂z.
 
-- Core region (0 <= r <= R_minus, 0 <= z <= h) with axisymmetry, no swirl.
-- Compressible, low-Mach: ρ = p / (Rg T). (Here T is taken uniform; extend with energy loop if needed.)
-- Stokes–Darcy closure for mean velocities in the core:
-      u_r = -(k_r/μ) ∂p/∂r,   u_z = -(k_z/μ) ∂p/∂z,
-  with k_r = α_r h^2, k_z = α_z h^2.
-- Elliptic equation for p(r,z):
-      (1/r) ∂r ( r ρ k_r ∂r p ) + ∂z ( ρ k_z ∂z p ) = 0
-  in (r,z) ∈ [0,R_minus]×[0,h].
-- Boundary conditions (core option, as in LaTeX Option A):
-    r = 0      : symmetry (∂p/∂r = 0)
-    r = R_minus: Dirichlet sealing pressure from the turned (vertical) corona jet:
-                 p_edge(z) = p0 + Ct * (ρ_j U_corona^2 b / h_eff) * φ(z),
-                 with φ(z) = (1 - z/h)^m (max near ground, ≈0 near top).
-    z = 0, h   : no normal flow for the Darcy closure (∂p/∂z = 0).
-- Velocities recovered via Stokes–Darcy.
-- Plots: quiver of velocity, |v| colormap, |u_r| colormap, |u_z| colormap, pressure colormap.
-  Each plot draws a vertical line at r = R_minus. Plots are saved only if SAVEFIG=1.
+We therefore set the sealing pressure at the rim to INCREASE with z:
+    p_edge(z) = p0 + Δp * ψ(z),       ψ(z) = 1 + λ z/h   (λ > 0).
+This is the minimal adjustment that makes w < 0 while remaining consistent with the
+physical situation of a vertical jet at z = h. If you strictly prefer the sealing
+load to peak near the floor for other reasons, you can switch to φ(z)=(1-z/h)^m and
+accept that the core model may yield w ≥ 0 unless additional momentum terms are added.
 
-You can tweak parameters below. To save figures, set SAVEFIG = 1.
+Governing core solve (Stokes–Darcy closure, compressible low-Mach with uniform T):
+    (1/r) ∂r ( r ρ k_r ∂r p ) + ∂z ( ρ k_z ∂z p ) = 0,   ρ = p/(Rg T)
+    u_r = -(k_r/μ) ∂p/∂r,   u_z = -(k_z/μ) ∂p/∂z.
+BCs (core-only):
+    r=0:       ∂p/∂r = 0
+    r=R_minus: p = p_edge(z)
+    z=0, z=h:  ∂p/∂z = 0
+Plots: quiver (velocity), |v|, |u_r|, |u_z|, and p; each includes a vertical line at r=R^-.
+Figures are SAVED only if SAVEFIG == 1 (and always SHOWN).
+
+Author: updated per latest LaTeX + discussion.
 """
 
 from dataclasses import dataclass
@@ -40,41 +45,40 @@ class Params:
     # Payload / ambient
     W: float = 400.0          # [N] payload
     p0: float = 101325.0      # [Pa] ambient pressure
-    T_inf: float = 293.0      # [K] ambient temperature (uniform here)
+    T_inf: float = 293.0      # [K] uniform temperature (core-only solve)
     # Fluid properties
     mu: float = 1.85e-5       # [Pa s]
     Rg: float = 287.0         # [J/(kg K)]
-    # Curtain / leakage
+    # Curtain (turned jet projected as rim pressure)
     b: float = 0.003          # [m] slot thickness
     h_eff: float = 0.010      # [m] effective sealing height
     Ct: float = 1.0           # [-] curtain factor
-    m_phi: float = 1.5        # [-] exponent in φ(z) = (1 - z/h)^m
+    lam: float = 0.4          # [-] slope for ψ(z) = 1 + lam*z/h (controls ∂p/∂z > 0)
     rho_j: float = 1.20       # [kg/m^3] jet density
     U_corona: float = 40.0    # [m/s] jet exit speed
     # Stokes–Darcy closure
-    alpha_r: float = 0.12     # [-] k_r = α_r * h^2
-    alpha_z: float = 0.05     # [-] k_z = α_z * h^2
+    alpha_r: float = 0.12     # [-] k_r = α_r h^2
+    alpha_z: float = 0.05     # [-] k_z = α_z h^2
     # Numerical grid
     Nr: int = 180
     Nz: int = 90
     # Solver
-    max_iter: int = 5000
+    max_iter: int = 6000
     tol_rel: float = 1e-4     # relative to p_c
     omega: float = 1.6        # SOR relaxation
     # Saving
-    SAVEFIG: int = 0          # set to 1 to save figures
+    SAVEFIG: bool = 1          # set to 1 to save figures
+    savepath = "../figs/"
 
 
-def phi_z(z, h, m):
-    """Sealing vertical distribution: φ(z) = (1 - z/h)^m, max at ground, ~0 near top."""
-    zeta = np.clip(z / h, 0.0, 1.0)
-    return (1.0 - zeta)**m
+def psi_increasing(z, h, lam):
+    """ψ(z) = 1 + lam * z/h  (increasing with z -> ∂p/∂z > 0 -> w < 0)."""
+    return 1.0 + lam * np.clip(z / h, 0.0, 1.0)
 
 
 def solve_core(pars: Params):
-    # Derived geometry
     R_minus = pars.R_tot - pars.w
-    # Cushion pressure (for reference)
+    # Reference cushion pressure
     p_c = pars.W / (np.pi * pars.R_tot**2)
     p_center = pars.p0 + p_c
 
@@ -82,8 +86,8 @@ def solve_core(pars: Params):
     kr = pars.alpha_r * pars.h**2
     kz = pars.alpha_z * pars.h**2
 
-    # Curtain pressure increment at rim
-    Delta_p_edge = pars.Ct * (pars.rho_j * pars.U_corona**2 * pars.b) / pars.h_eff  # [Pa]
+    # Rim pressure increment from curtain momentum
+    Delta_p_edge = pars.Ct * (pars.rho_j * pars.U_corona**2 * pars.b) / pars.h_eff
 
     # Grid
     r = np.linspace(0.0, R_minus, pars.Nr)
@@ -92,59 +96,50 @@ def solve_core(pars: Params):
     dz = z[1]-z[0] if pars.Nz > 1 else 1.0
     Rg, Zg = np.meshgrid(r, z, indexing='xy')
 
-    # Edge pressure (Dirichlet at r = R_minus), varying with z
-    p_edge = pars.p0 + Delta_p_edge * phi_z(z, pars.h, pars.m_phi)  # shape (Nz,)
+    # Rim pressure profile p_edge(z) = p0 + Δp * ψ(z) with ψ increasing
+    p_edge = pars.p0 + Delta_p_edge * psi_increasing(z, pars.h, pars.lam)  # (Nz,)
 
-    # Initial guess for p(r,z): smooth interpolation between center and edge
+    # Initial guess: smooth radial interpolation from center to rim
     P = np.zeros((pars.Nz, pars.Nr))
     for i in range(pars.Nz):
         P[i, :] = p_center - (p_center - p_edge[i]) * (r / max(R_minus, 1e-12))**2
 
-    # Helper: apply boundary conditions to P in-place
     def apply_bc(Pf):
-        # r = R_minus: Dirichlet from curtain
+        # r = R_minus: Dirichlet
         Pf[:, -1] = p_edge[:]
-        # r = 0: Neumann ∂p/∂r = 0 -> mirror
+        # r = 0: Neumann (mirror)
         Pf[:, 0] = Pf[:, 1]
-        # z = 0 and z = h: Neumann ∂p/∂z = 0 -> mirror
+        # z = 0, z = h: Neumann (mirror)
         Pf[0, :]  = Pf[1, :]
         Pf[-1, :] = Pf[-2, :]
         return Pf
 
     P = apply_bc(P)
 
-    # Density function
     def rho_of(Pf, Tval):
         return Pf / (pars.Rg * Tval)
 
-    # Iterative SOR solve for (1/r)∂r(r ρ kr ∂r P) + ∂z(ρ kz ∂z P) = 0
-    T = pars.T_inf  # use uniform T; extend with energy loop if needed
-    rho = rho_of(P, T)
+    T = pars.T_inf
     tol_abs = pars.tol_rel * p_c
 
     for it in range(pars.max_iter):
         P_old = P.copy()
         rho = rho_of(P, T)
 
-        # Sweep interior points
+        # Interior sweep (SOR)
         for i in range(1, pars.Nz-1):
             for j in range(1, pars.Nr-1):
-                rj = r[j]
-                # Avoid division by zero near the axis
-                if rj < 1e-12:
-                    rj = dr * 0.5
+                rj = r[j] if r[j] > 1e-12 else 0.5*dr
 
-                # ρ at faces (arithmetic mean)
+                # Densities at faces (arithmetic mean)
                 rho_jp = 0.5*(rho[i, j] + rho[i, j+1])
                 rho_jm = 0.5*(rho[i, j] + rho[i, j-1])
                 rho_ip = 0.5*(rho[i+1, j] + rho[i, j])
                 rho_im = 0.5*(rho[i-1, j] + rho[i, j])
 
                 # Flux coefficients
-                # Radial term: (1/r) * ∂r [ r * rho * kr * ∂r P ]
                 Ar_p = (rj + 0.5*dr) * rho_jp * kr / (dr**2)
                 Ar_m = (rj - 0.5*dr) * rho_jm * kr / (dr**2)
-                # Axial term: ∂z [ rho * kz * ∂z P ]
                 Az_p = rho_ip * kz / (dz**2)
                 Az_m = rho_im * kz / (dz**2)
 
@@ -155,15 +150,12 @@ def solve_core(pars: Params):
                 P_new = rhs / (denom + 1e-30)
                 P[i, j] = (1 - pars.omega) * P[i, j] + pars.omega * P_new
 
-        # Re-apply BCs
         P = apply_bc(P)
-
         err = np.max(np.abs(P - P_old))
         if err < tol_abs:
-            # print(f"Converged at iter {it}, err={err:.3e}")
             break
 
-    # Velocities from Darcy
+    # Velocities (Stokes–Darcy)
     dPdr = np.zeros_like(P)
     dPdz = np.zeros_like(P)
     dPdr[:, 1:-1] = (P[:, 2:] - P[:, :-2]) / (2*dr)
@@ -173,10 +165,10 @@ def solve_core(pars: Params):
     dPdz[0, :]    = (P[1, :] - P[0, :]) / dz
     dPdz[-1, :]   = (P[-1, :] - P[-2, :]) / dz
 
-    u_r = -(kr / pars.mu) * dPdr
-    u_z = -(kz / pars.mu) * dPdz
+    ur = -(kr / pars.mu) * dPdr
+    uz = -(kz / pars.mu) * dPdz
 
-    return r, z, Rg, Zg, P, u_r, u_z, p_c, R_minus
+    return r, z, Rg, Zg, P, ur, uz, p_c, R_minus
 
 
 def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
@@ -184,7 +176,7 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     ur_abs = np.abs(ur)
     uz_abs = np.abs(uz)
 
-    # Downsample vectors for quiver clarity
+    # Quiver downsample
     Nr, Nz = Rg.shape[1], Zg.shape[0]
     step_r = max(1, Nr // 30)
     step_z = max(1, Nz // 15)
@@ -193,7 +185,6 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     urq = ur[::step_z, ::step_r]
     uzq = uz[::step_z, ::step_r]
 
-    # Helper to add the vertical line at r = R_minus
     def add_Rminus_line():
         plt.plot([R_minus, R_minus], [0.0, pars.h])
 
@@ -206,9 +197,9 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     plt.xlim(0, R_minus); plt.ylim(0, pars.h)
     plt.tight_layout()
     if pars.SAVEFIG == 1:
-        plt.savefig('quiver_velocity.png', dpi=180)
+        plt.savefig(pars.savepath+'quiver_velocity.png', dpi=180)
 
-    # 2) |v| colormap
+    # 2) |v|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(Rg, Zg, speed, shading='auto')
     add_Rminus_line()
@@ -218,9 +209,9 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     plt.xlim(0, R_minus); plt.ylim(0, pars.h)
     plt.tight_layout()
     if pars.SAVEFIG == 1:
-        plt.savefig('cmap_speed.png', dpi=180)
+        plt.savefig(pars.savepath+'cmap_speed.png', dpi=180)
 
-    # 3) |u_r| colormap
+    # 3) |u_r|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(Rg, Zg, ur_abs, shading='auto')
     add_Rminus_line()
@@ -230,9 +221,9 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     plt.xlim(0, R_minus); plt.ylim(0, pars.h)
     plt.tight_layout()
     if pars.SAVEFIG == 1:
-        plt.savefig('cmap_ur.png', dpi=180)
+        plt.savefig(pars.savepath+'cmap_ur.png', dpi=180)
 
-    # 4) |u_z| colormap
+    # 4) |u_z|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(Rg, Zg, uz_abs, shading='auto')
     add_Rminus_line()
@@ -242,9 +233,9 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     plt.xlim(0, R_minus); plt.ylim(0, pars.h)
     plt.tight_layout()
     if pars.SAVEFIG == 1:
-        plt.savefig('cmap_uz.png', dpi=180)
+        plt.savefig(pars.savepath+'cmap_uz.png', dpi=180)
 
-    # 5) Pressure colormap
+    # 5) Pressure
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(Rg, Zg, P, shading='auto')
     add_Rminus_line()
@@ -254,15 +245,14 @@ def make_plots(pars: Params, r, z, Rg, Zg, P, ur, uz, R_minus):
     plt.xlim(0, R_minus); plt.ylim(0, pars.h)
     plt.tight_layout()
     if pars.SAVEFIG == 1:
-        plt.savefig('cmap_pressure.png', dpi=180)
+        plt.savefig(pars.savepath+'cmap_pressure.png', dpi=180)
 
-    # Show figures (always)
     plt.show()
 
 
-# ---------------------------- Main ----------------------------
 if __name__ == '__main__':
     pars = Params()
     r, z, Rg, Zg, P, ur, uz, p_c, R_minus = solve_core(pars)
+    # Sanity check for direction: expect mean uz < 0 (downward)
+    # print('Mean uz:', np.mean(uz))
     make_plots(pars, r, z, Rg, Zg, P, ur, uz, R_minus)
-    # To save figures as PNG, set pars.SAVEFIG = 1
