@@ -17,7 +17,8 @@
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 
 % --- title & author ---
-\title{Design Methodology for a Dual-Jet Hovering Disc Using Concentric Air Curtains}
+\title{Design Methodology for a Dual-Jet Hovering Disc with Concentric Air Curtains:\\
+Model, Non-Dimensionalization, and Simulation Outputs}
 \author{ }
 \date{ }
 
@@ -25,124 +26,116 @@
 \maketitle
 
 \begin{abstract}
-This work presents a physical model and an operational design methodology for a hovering disc sustained by two concentric air jets.
-The outer annular jet forms an aerodynamic curtain that confines the inner flow and minimizes leakage, whereas the inner jet compensates the residual mass loss to maintain a controlled cushion pressure beneath the disc. We state the governing equations for lift balance, leakage through the peripheral gap, and curtain dynamics, and we provide a step-by-step sizing procedure. We additionally introduce a \emph{non-dimensionalization strategy} for the compressible, axisymmetric core model so that simulation outputs (pressure and velocities) can be plotted and compared in non-dimensional form, independent of specific parameter choices.
+We present a modeling and design framework for a hovering disc sustained by two concentric air jets: an outer annular jet (air curtain) that confines the inner flow and reduces leakage, and an inner make-up jet that maintains the cushion overpressure.
+The analysis adopts a low-Mach compressible, axisymmetric core model with an anisotropic Stokes--Darcy closure and avoids thin-film assumptions ($h\sim R_{\mathrm{tot}}$). We state the lift and leakage balances, the curtain momentum condition, and a computational algorithm.
+A \emph{non-dimensionalization strategy} is provided so that the accompanying Python tool produces parameter-agnostic plots. This document also loads the simulation figures saved by the script into the repository's shared \texttt{../figs/} directory, keeping a stable linkage between code and paper.
 \end{abstract}
 
-\section{Introduction and Operating Principle}
-The device is a rigid circular disc of total radius $R_{\text{tot}}$ hovering at a distance $h$ from the ground by sustaining an overpressure $p_c$ in the central region. Two coaxial jets are employed (Fig.~\ref{fig:geometry}): an \emph{outer annular jet} (``corona'') acting as an air curtain that seals and recirculates the cushion flow, and an \emph{inner jet} that compensates residual mass leakage across the periphery.
-
 \section{Geometry and Notation}
-We adopt the following notation, consistent with the schematic in Fig.~\ref{fig:geometry}:
+We use the schematic in Fig.~\ref{fig:geometry} and the following notation:
 \begin{itemize}
-  \item $R_{\text{tot}}$ total radius; $w$ leakage-ring width; $R^-=R_{\text{tot}}-w$ inner edge of the ring;
-  \item $h$ nominal clearance; $p_c=W/(\pi R_{\text{tot}}^2)$ target cushion overpressure;
-  \item Outer jet: slot thickness $b$, area $A_\mathrm{corona}=2\pi R_{\text{tot}}\,b$, speed $U_\mathrm{corona}$, jet density $\rho_j$;
-  \item Inner jet: mass flow $\dot m_\mathrm{in}$; leakage $\dot m_\mathrm{loss}$ with $Q_\mathrm{loss}=\dot m_\mathrm{loss}/\rho_\mathrm{edge}$.
+  \item $R_{\mathrm{tot}}$ total radius; $w$ leakage-ring width; $R^{-}=R_{\mathrm{tot}}-w$ inner edge of the peripheral ring;
+  \item $h$ disc--ground clearance; $h_{\mathrm{eff}}$ effective sealing height at the rim; $b$ slot thickness of the curtain;
+  \item $W$ payload; $p_0$ ambient pressure; $p_c=W/(\pi R_{\mathrm{tot}}^2)$ cushion overpressure;
+  \item Outer jet (\emph{corona}): exit speed $U_{\mathrm{corona}}$, jet density $\rho_j$, slot area $A_{\mathrm{corona}}=2\pi R_{\mathrm{tot}}\,b$;
+  \item Inner jet: mass flow $\dot m_{\mathrm{in}}$; leakage $\dot m_{\mathrm{loss}}$; volumetric loss $Q_{\mathrm{loss}}=\dot m_{\mathrm{loss}}/\rho_{\mathrm{edge}}$.
 \end{itemize}
 
 \begin{figure}[t]
   \centering
+  % All figures are loaded from the common ../figs/ directory
   \includegraphics[width=0.95\linewidth]{../figs/schema_geometry.png}
-  \caption{Geometry and notation. Figures produced by the Python script are saved under \texttt{../figs/}.}
+  \caption{Geometry and notation. The domain for the core model is $(r,z)\in[0,R^{-}]\times[0,h]$; the outer annular jet issues vertically downward at $z=h$ on $R^{-}\le r\le R_{\mathrm{tot}}$, then turns near the floor forming a sealing curtain.}
   \label{fig:geometry}
 \end{figure}
 
-\section{Core Model (Design-Oriented)}
-We use an anisotropic Stokes--Darcy closure for the mean core flow (low-Mach, no swirl):
+\section{Core Model and Sealing Condition (summary)}
+We adopt the anisotropic Stokes--Darcy closure for mean velocities
 \begin{equation}
   u = -\frac{\kappa_r}{\mu}\,\partial_r p,\qquad
   w = -\frac{\kappa_z}{\mu}\,\partial_z p,\qquad
   \kappa_r=\alpha_r h^2,\ \kappa_z=\alpha_z h^2,
-  \label{eq:darcy}
 \end{equation}
-with compressible continuity
-\begin{equation}
-  \frac{1}{r}\,\partial_r\!\big(r\,\rho\,u\big)+\partial_z(\rho\,w)=0,\qquad
-  p=\rho R_g T.
-  \label{eq:cont_state}
-\end{equation}
-Eliminating $(u,w)$ yields the elliptic pressure problem on the core domain $r\in[0,R^-]$, $z\in[0,h]$:
+with compressible continuity and ideal-gas state $p=\rho R_g T$.
+The design-oriented pressure equation in the core reads
 \begin{equation}
   \frac{1}{r}\,\partial_r\!\big(r\,\rho\,\kappa_r\,\partial_r p\big)+\partial_z\!\big(\rho\,\kappa_z\,\partial_z p\big)=0,
-  \label{eq:elliptic_dim}
 \end{equation}
-with boundary conditions: symmetry at $r=0$ ($\partial_r p=0$), no-normal-flow at $z=0$ and $z=h$ ($\partial_z p=0$ for the Darcy closure), and sealing pressure at the rim $r=R^-$,
+with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a \emph{rim pressure} at $r=R^{-}$ induced by the turned curtain,
 \begin{equation}
-  p_\mathrm{edge}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),
-  \qquad \Delta p = C_t\,\frac{\rho_j U_\mathrm{corona}^2\,b}{h_\mathrm{eff}},
-  \label{eq:rim_bc}
+  p_{\mathrm{edge}}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),\qquad
+  \Delta p = C_t\,\frac{\rho_j U_{\mathrm{corona}}^2\,b}{h_{\mathrm{eff}}}.
 \end{equation}
-with a prescribed vertical distribution $\Phi(\zeta)$ (e.g.\ increasing in $\zeta$ to enforce downward core flow, $w<0$).
+To ensure a downward vertical component in the core ($w<0$), one convenient choice is an \emph{increasing} profile $\Phi(\zeta)$ so that $\partial_z p>0$ and $w=-(\kappa_z/\mu)\partial_z p<0$.
 
-\section{Non-Dimensionalization}
-Define dimensionless coordinates and fields
+\section{Non-Dimensionalization and Plotting Conventions}
+We scale
 \begin{equation}
-  \hat r=\frac{r}{R_{\text{tot}}},\quad
+  \hat r=\frac{r}{R_{\mathrm{tot}}},\quad
   \hat z=\frac{z}{h},\quad
   \hat p=\frac{p-p_0}{p_c},\quad
-  \hat T=\frac{T}{T_\infty},
-  \label{eq:nondim_vars}
+  \hat T=\frac{T}{T_\infty},\quad
+  \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\ \ \Pi_p=\frac{p_c}{p_0}.
 \end{equation}
-and $\rho_\infty=p_0/(R_g T_\infty)$, so
+The non-dimensional elliptic equation is
 \begin{equation}
-  \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\qquad
-  \Pi_p=\frac{p_c}{p_0}.
-  \label{eq:rho_hat}
+  \frac{1}{\hat r}\,\partial_{\hat r}\!\big(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\big)
+  + \mathcal{A}\,\partial_{\hat z}\!\big(\hat\rho\,\partial_{\hat z}\hat p\big)=0,\qquad
+  \mathcal{A}=\frac{\alpha_z}{\alpha_r}\left(\frac{R_{\mathrm{tot}}}{h}\right)^2,
 \end{equation}
-Introduce the anisotropy and geometry parameters
+with BCs $\partial_{\hat r}\hat p(0,\hat z)=0$, $\partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0$, and
+$\hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\Phi(\hat z)$, where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
 \begin{equation}
-  \mathcal{A}=\frac{\kappa_z/h^2}{\kappa_r/R_{\text{tot}}^2}
-  =\frac{\alpha_z}{\alpha_r}\left(\frac{R_{\text{tot}}}{h}\right)^2,\qquad
-  \hat R^-=\frac{R^-}{R_{\text{tot}}}.
-  \label{eq:A_param}
+  \Pi_{\mathrm{edge}}=\frac{p_{\mathrm{edge}}-p_0}{p_c}=\frac{C_t\,\rho_j U_{\mathrm{corona}}^2\,b}{h_{\mathrm{eff}}\,p_c}.
 \end{equation}
-Then the non-dimensional elliptic equation is
+Natural velocity scales are
 \begin{equation}
-  \boxed{\
-  \frac{1}{\hat r}\,\partial_{\hat r}\!\Big(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\Big)
-  + \mathcal{A}\,\partial_{\hat z}\!\Big(\hat\rho\,\partial_{\hat z}\hat p\Big)=0,\quad
-  (\hat r,\hat z)\in[0,\hat R^-]\times[0,1].\ }
-  \label{eq:elliptic_hat}
-\end{equation}
-Boundary conditions:
-\begin{equation}
-  \partial_{\hat r}\hat p(0,\hat z)=0,\quad
-  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\quad
-  \hat p(\hat R^-,\hat z)=\hat p_\mathrm{edge}(\hat z)=\Pi_\mathrm{edge}\,\Phi(\hat z),
-  \label{eq:BC_hat}
-\end{equation}
-with the dimensionless rim amplitude
-\begin{equation}
-  \Pi_\mathrm{edge}=\frac{p_\mathrm{edge}-p_0}{p_c}
-  =\frac{C_t\,\rho_j U_\mathrm{corona}^2\,b}{h_\mathrm{eff}\,p_c}.
-  \label{eq:Pi_edge}
-\end{equation}
-
-\paragraph{Non-dimensional velocities and plotting.}
-Natural velocity scales from \eqref{eq:darcy} are
-\begin{equation}
-  U_r^0=\frac{\kappa_r}{\mu}\,\frac{p_c}{R_{\text{tot}}},\qquad
+  U_r^0=\frac{\kappa_r}{\mu}\,\frac{p_c}{R_{\mathrm{tot}}},\qquad
   U_z^0=\frac{\kappa_z}{\mu}\,\frac{p_c}{h},\qquad
-  S=\frac{U_z^0}{U_r^0}=\frac{\alpha_z}{\alpha_r}\,\frac{R_{\text{tot}}}{h}.
-  \label{eq:U_scales}
+  S=\frac{U_z^0}{U_r^0}=\frac{\alpha_z}{\alpha_r}\frac{R_{\mathrm{tot}}}{h}.
 \end{equation}
-Define
+The dimensionless velocities for plotting are
 \begin{equation}
   \hat u=-\partial_{\hat r}\hat p,\qquad
-  \hat w=-\partial_{\hat z}\hat p.
-  \label{eq:vel_hat}
-\end{equation}
-For quiver with isotropic scaling in the plot plane, use vectors $(\hat u,\,S\,\hat w)$.
-Report colormaps of $\hat p$, $|\hat u|$, $|\hat w|$, and optionally
-\begin{equation}
+  \hat w=-\partial_{\hat z}\hat p,\qquad
   \hat V_{\mathrm{iso}}=\sqrt{\hat u^{\,2}+S^{2}\hat w^{\,2}}.
 \end{equation}
-Axes must be labeled $\hat r\in[0,\hat R^-]$ and $\hat z\in[0,1]$; colorbars are non-dimensional.
 
-\section{Simulation Outputs (from \texttt{../figs/})}
-Once the Python script is updated to emit non-dimensional fields, figures should be saved under \texttt{../figs/} with labels indicating hatted quantities, e.g. \texttt{cmap\_p\_hat.png}, \texttt{cmap\_u\_hat.png}, \texttt{cmap\_w\_hat.png}, and a quiver using $(\hat u,S\hat w)$.
-The vertical reference at $\hat r=\hat R^-$ should be drawn in every plot.
-Existing dimensional figures can still be shown; the non-dimensional ones enable parameter-agnostic comparison across runs.
+\section{Simulation Outputs (loaded from \texttt{../figs/})}
+The Python script \texttt{scripts/run\_sim.py} solves the core problem and \emph{exports non-dimensional plots} to the shared directory \texttt{../figs/} with the filenames referenced below. Each figure uses axes $(\hat r,\hat z)$ and draws a vertical reference at $\hat r=\hat R^{-}$.
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/quiver_velocity.png}
+  \caption{Non-dimensional velocity field (quiver). Vectors show $(\hat u,\,S\hat w)$ for isotropic visual scaling; downward components reflect the vertical-jet condition at $z=h$.}
+  \label{fig:quiver}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_speed.png}
+  \caption{Colormap of the non-dimensional isotropic speed magnitude $\hat V_{\mathrm{iso}}=\sqrt{\hat u^{\,2}+S^{2}\hat w^{\,2}}$.}
+  \label{fig:cmap_speed}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_ur.png}
+  \caption{Colormap of the non-dimensional radial component magnitude $|\hat u|$.}
+  \label{fig:cmap_ur}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_uz.png}
+  \caption{Colormap of the non-dimensional axial component magnitude $|\hat w|$.}
+  \label{fig:cmap_uz}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_pressure.png}
+  \caption{Colormap of the non-dimensional pressure $\hat p$.}
+  \label{fig:cmap_p}
+\end{figure}
 
 \end{document}
