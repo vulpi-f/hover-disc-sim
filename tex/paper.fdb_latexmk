@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1760617375.49602 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760617376.62314 0
+["pdflatex"] 1760619642.62032 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760619643.71756 0
   "C:/Users/vulpi/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1760609542 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1760440036 13321623 3fb338287053e28da04db6fc1a036b60 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc" 1256929440 2375 baa924870cfb487815765f9094cf3728 ""
@@ -18,9 +18,7 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/cm/cmr10.tfm" 1136765053 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmbx10.tfm" 1256929440 12076 b54175e02101bea1addf6b2d0197ed12 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmbx12.tfm" 1256929440 12088 d750ac78274fa7c9f73ba09914c04f8a ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmbx6.tfm" 1256929440 12060 e1421116ee46f156304f311f9d8331aa ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmbx7.tfm" 1256929440 12072 feea2d4511ce6b67cf0049876d122c6b ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmbx8.tfm" 1256929440 12076 360d279d01701e9e9f0f2427c1d230fe ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmr10.tfm" 1256929440 12056 7e13df7fe4cbce21b072ba7c4f4deb6e ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmr12.tfm" 1256929440 12092 7b1546e2d096cfd5dcbd4049b0b1ec2e ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/lm/ec-lmr17.tfm" 1256929440 12156 ca1ae6a3c8564e89597f1f993fba1608 ""
@@ -69,7 +67,7 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr8.pfb" 1256929440 122174 a2d5e73f396ddbeb3bdf5c79aea0993d ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmri10.pfb" 1256929440 112593 fda2373ba4420af33949610de4c28fe8 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy10.pfb" 1256929440 27863 09ce3735688ffde955e72da27c95b61a ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy6.pfb" 1256929440 28109 6d61305ed3d0eb794ebe36f15cf44aa0 ""
+  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy7.pfb" 1256929440 27941 d1f5d03f61a46c3fcc3a2ba904ddda52 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb" 1256929440 27802 5c876bb2c4040caaf035d60bd74a86bd ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/context/base/mkii/supp-pdf.mkii" 1580390158 71627 94eb9990bed73c364d7f53f960cc8c5b ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/generic/bigintcalc/bigintcalc.sty" 1576433602 40635 c40361e206be584d448876bba8a64a3b ""
@@ -141,11 +139,11 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/dicts/translations-basic-dictionary-english.trsl" 1644048522 5588 0c1628daf15f4411ff1f463114c634a3 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760617371 14071 c94c2a667c107f23d6bf9426e01d3921 ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760619641 12515 7e916c91db68b17bbc236307d32ddc1c ""
   "figures/schema_geometry.png" 1760455298 76299 d39525bd361ba1c8bbeebae0f4c471c8 ""
-  "paper.aux" 1760617376 3987 969a2d6657290da8b461c0eae729f1df "pdflatex"
-  "paper.out" 1760617376 2768 b9beafb4be8b854cef462948789d151f "pdflatex"
-  "paper.tex" 1760617371 14071 c94c2a667c107f23d6bf9426e01d3921 ""
+  "paper.aux" 1760619643 4304 4cd663c4ec41591facba2405b1343493 "pdflatex"
+  "paper.out" 1760619643 2810 0495fa330699aea981252efbde645b3d "pdflatex"
+  "paper.tex" 1760619641 12515 7e916c91db68b17bbc236307d32ddc1c ""
   (generated)
   "paper.aux"
   "paper.log"

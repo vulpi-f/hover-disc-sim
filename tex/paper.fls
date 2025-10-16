@@ -210,6 +210,8 @@ INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\sym
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm5.tfm
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr7.tfm
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr5.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr10.tfm
@@ -230,10 +232,10 @@ INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx8.
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx6.tfm
 INPUT C:\Users\vulpi\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ec.enc
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-rm.enc
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathit.enc
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ts1.enc
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-rm.enc
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathsy.enc
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ts1.enc
 INPUT .\figures\schema_geometry.png
 INPUT .\figures\schema_geometry.png
 INPUT .\figures\schema_geometry.png
@@ -244,12 +246,9 @@ INPUT .\figures\schema_geometry.png
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx10.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx7.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx5.tfm
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr7.tfm
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr5.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathex.enc
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx8.tfm
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx6.tfm
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmbx12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\lmmi12.tfm
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\lmsy10.tfm
@@ -288,8 +287,8 @@ INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmri10.
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmri10.pfb
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy10.pfb
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy10.pfb
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy6.pfb
-INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy6.pfb
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy7.pfb
+INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy7.pfb
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy8.pfb
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmsy8.pfb
 INPUT C:\Users\vulpi\AppData\Local\Programs\MiKTeX\fonts\type1\public\amsfonts\symbols\msam10.pfb
