@@ -1,151 +1,260 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-run_sim.py — Hover disc 2D (assi-simmetrico): geometria + campi 2D
--------------------------------------------------------------------
-• Parametri settati qui (niente argparse) per esecuzione da VS Code.
-• Figura 1: geometria (sezione r–z, suolo a z=0).
-• Figura 2: tre subplot con colormap 2D di:
-   (a) pressione p(r,z) [Pa]
-   (b) velocità radiale u_r(r,z) [m/s]
-   (c) velocità assiale u_z(r,z) [m/s]
+Hover Disc 2D Axisymmetric Solver (low‑Mach, compressible core with Stokes–Darcy closure)
+========================================================================================
 
-Modello (stazionario, incomprimibile, assi-simmetrico):
-- Interno (0 ≤ r ≤ R-w): gap ~ h_c, p ~ p_c costante, u ~ 0.
-- Sigillo (R-w ≤ r ≤ R, 0 ≤ z ≤ h_eff): flusso tra lastre (lubrificazione).
-  u_r(r,z) = 6·ū(r)·φ·(1−φ),  φ = z/h_eff,  ū(r) = Q / (2π r h_eff).
-  p(r) = p_c − (6 μ Q)/(π h_eff^3) · ln(r/(R−w)).
-- Esterno (r > R): p = 0, u = 0.
-- In questo modello, dalla continuità con ū∝1/r segue u_z ≈ 0 nel sigillo (e no-penetration a z=0,h_eff).
+This script implements the algorithm described in the LaTeX:
+- Core region (0 <= r <= R_minus, 0 <= z <= h) with axisymmetry, no swirl.
+- Pressure p(r,z) solves: (1/r)∂r(r * ρ * k_r ∂r p) + ∂z(ρ * k_z ∂z p) = 0,
+  where ρ = p/(R_g T). We use anisotropic permeabilities k_r = α_r h^2, k_z = α_z h^2.
+- Boundary conditions:
+    r = 0        : symmetry (∂p/∂r = 0)
+    r = R_minus  : curtain sealing pressure p_edge(z) = p0 + Δp * fz(z)
+    z = 0, z = h : no normal flow (∂p/∂z = 0)
+- Velocities from Stokes–Darcy:
+    u_r = -(k_r/μ) ∂p/∂r,    u_z = -(k_z/μ) ∂p/∂z
+- Curtain profile fz(z) is chosen to make vertical flow *downward* in the core,
+  consistent with design intent. To that end we set p_edge larger near the TOP
+  (z ~ h) than near the ground, i.e. fz(z) = 1 + λ z/h with λ > 0, so ∂p/∂z > 0
+  and therefore u_z = -(k_z/μ) ∂p/∂z < 0 (downwards).
 
-NOTA: se vuoi rappresentare un u_z non nullo (alimentazione/risucchio), possiamo estendere il modello
-con una sorgente volumetrica o con uno strato d’ingresso nel sigillo.
+Outputs (saved to PNG files):
+  - quiver_velocity.png        : quiver plot of (u_r,u_z)
+  - cmap_speed.png             : |v| colormap
+  - cmap_ur.png                : |u_r| colormap
+  - cmap_uz.png                : |u_z| colormap
+  - cmap_pressure.png          : pressure colormap
+
+You can tweak parameters in the 'Parameters' section.
 """
 
-import os
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ---------------- Parametri (modificabili) ----------------
-R      = 1.00   # m, raggio disco (Ø=2R)
-h_c    = 0.20   # m, luce centrale
-w      = 0.05   # m, larghezza del tratto di sigillo
-h_eff  = 0.03   # m, gap efficace nel sigillo
-m_load = 40.0   # kg, carico utile sostenuto
-rho    = 1.20   # kg/m^3, densità aria (unused qui)
-mu     = 1.8e-5 # Pa*s, viscosità dinamica aria
-g      = 9.81   # m/s^2
 
-# Griglia 2D (r–z). r ∈ [0, R + w], z ∈ [0, h_c]
-Nr, Nz = 400, 240
-r = np.linspace(0.0, R + w, Nr)
-z = np.linspace(0.0, h_c, Nz)
-Rmesh, Zmesh = np.meshgrid(r, z)  # (Nz, Nr)
+# ---------------------------- Parameters ----------------------------
+@dataclass
+class Params:
+    # Geometry
+    R_tot: float = 0.50       # [m] total radius
+    w: float = 0.05           # [m] leakage ring width
+    h: float = 0.20           # [m] hover height
+    # Payload / ambient
+    W: float = 400.0          # [N] payload
+    p0: float = 101325.0      # [Pa] ambient pressure
+    T_inf: float = 293.0      # [K] ambient temperature
+    # Fluid properties
+    mu: float = 1.85e-5       # [Pa s]
+    Rg: float = 287.0         # [J/(kg K)]
+    k_air: float = 0.026      # [W/(m K)] (not used in this core-only solve)
+    # Curtain / leakage
+    b: float = 0.003          # [m] slot thickness
+    h_eff: float = 0.010      # [m] effective sealing height
+    Ct: float = 1.0           # [-] curtain factor
+    lam: float = 0.4          # [-] vertical distribution strength (fz = 1 + lam*z/h)
+    rho_j: float = 1.20       # [kg/m^3] jet density
+    U_corona: float = 40.0    # [m/s] jet exit speed
+    # Stokes–Darcy closure
+    alpha_r: float = 0.12     # [-] kr = alpha_r * h^2
+    alpha_z: float = 0.05     # [-] kz = alpha_z * h^2
+    # Numerical grid
+    Nr: int = 180
+    Nz: int = 90
+    # Solver
+    max_iter: int = 5000
+    tol_rel: float = 1e-4     # relative to p_c
+    omega: float = 1.6        # SOR relaxation
 
-# ---------------- Grandezze derivate ----------------
-A_disk = np.pi * R**2
-p_c = (m_load * g) / A_disk  # Pa
-rin  = R - w                 # raggio interno del sigillo
-ln_factor = np.log(R / rin)
 
-# Portata nel sigillo (lubrificazione): Q = π h_eff^3 p_c / (6 μ ln(R/rin))
-Q = (np.pi * h_eff**3 * p_c) / (6.0 * mu * ln_factor)  # m^3/s
-P_ideal = p_c * Q  # W
+def fz_linear(z, h, lam):
+    """Vertical loading shape for the curtain: fz(z) = 1 + lam * z/h.
+       With lam > 0 this produces p_edge larger near the TOP, yielding ∂p/∂z > 0
+       and u_z = -(kz/μ) ∂p/∂z < 0 (downwards) inside the core."""
+    return 1.0 + lam * (z / h)
 
-def ubar(rval: np.ndarray) -> np.ndarray:
-    """Velocità media radiale nel sigillo (ū = Q/(2π r h_eff))."""
-    return Q / (2.0 * np.pi * np.clip(rval, 1e-6, None) * h_eff)
 
-def u_r_profile(rval: np.ndarray, zval: np.ndarray) -> np.ndarray:
-    """Profilo parabolico tra piastre: u_r = 6·ū(r)·φ·(1−φ), φ=z/h_eff, nel solo sigillo."""
-    phi = np.clip(zval / h_eff, 0.0, 1.0)
-    return 6.0 * ubar(rval) * phi * (1.0 - phi)
+def solve_core(p: Params):
+    # Derived geometry
+    R_minus = p.R_tot - p.w
+    # Cushion pressure (for reference)
+    p_c = p.W / (np.pi * p.R_tot**2)
+    p_center = p.p0 + p_c
 
-# ---------------- Campi 2D ----------------
-P  = np.zeros_like(Rmesh)  # pressione [Pa]
-Ur = np.zeros_like(Rmesh)  # velocità radiale [m/s]
-Uz = np.zeros_like(Rmesh)  # velocità assiale [m/s] (≈0 nel modello)
+    # Permeabilities
+    kr = p.alpha_r * p.h**2
+    kz = p.alpha_z * p.h**2
 
-mask_interior = (Rmesh <= rin) & (Zmesh <= h_c)
-mask_seal     = (Rmesh >  rin) & (Rmesh <= R) & (Zmesh <= h_eff)
-mask_outside  = (Rmesh >  R)
+    # Curtain pressure increment at rim
+    Delta_p_edge = p.Ct * (p.rho_j * p.U_corona**2 * p.b) / p.h_eff  # [Pa]
 
-# Pressione
-P[mask_interior] = p_c
-coef = (6.0 * mu * Q) / (np.pi * h_eff**3)
-r_sig = np.clip(Rmesh, rin, R)
-P[mask_seal] = p_c - coef * np.log(r_sig[mask_seal] / rin)
-P[mask_outside] = 0.0
+    # Grid
+    r = np.linspace(0.0, R_minus, p.Nr)
+    z = np.linspace(0.0, p.h, p.Nz)
+    dr = r[1]-r[0] if p.Nr > 1 else 1.0
+    dz = z[1]-z[0] if p.Nz > 1 else 1.0
+    Rg, Zg = np.meshgrid(r, z, indexing='xy')
 
-# Velocità
-Ur[mask_seal] = u_r_profile(Rmesh[mask_seal], Zmesh[mask_seal])
-# Uz rimane 0 con questo modello (continuità + no-penetration)
+    # Edge pressure (Dirichlet at r = R_minus), varying with z
+    p_edge = p.p0 + Delta_p_edge * fz_linear(z, p.h, p.lam)  # shape (Nz,)
 
-# ---------------- Report ----------------
-print("=== Hover Disc 2D — VS Code ===")
-print(f"R                : {R:.2f} m (Ø = {2*R:.2f} m)")
-print(f"h_c (centro)     : {h_c:.3f} m")
-print(f"w (sigillo)      : {w:.3f} m")
-print(f"h_eff (sigillo)  : {h_eff:.3f} m")
-print(f"Carico           : {m_load:.1f} kg")
-print(f"p_c              : {p_c:.2f} Pa")
-print(f"Q (lubr.)        : {Q:.4f} m^3/s")
-print(f"P_ideal          : {P_ideal/1000:.3f} kW")
+    # Initial guess for p(r,z): smooth interpolation between center and edge
+    P = np.zeros((p.Nz, p.Nr))
+    for i in range(p.Nz):
+        P[i, :] = p_center - (p_center - p_edge[i]) * (r / max(R_minus, 1e-12))**2
 
-# ---------------- Plot 1: Geometria ----------------
-os.makedirs("figs", exist_ok=True)
+    # Helper: apply boundary conditions to P in-place
+    def apply_bc(Pf):
+        # r = R_minus: Dirichlet from curtain
+        Pf[:, -1] = p_edge[:]
+        # r = 0: Neumann ∂p/∂r = 0 -> mirror
+        Pf[:, 0] = Pf[:, 1]
+        # z = 0 and z = h: Neumann ∂p/∂z = 0 -> mirror
+        Pf[0, :]  = Pf[1, :]
+        Pf[-1, :] = Pf[-2, :]
+        return Pf
 
-fig1, ax1 = plt.subplots(figsize=(9, 4.5))
-# Suolo
-ax1.plot([0, R + w], [0, 0], lw=2)
-# Sottosuperficie disco (interno)
-ax1.plot([0, rin], [h_c, h_c], lw=3)
-# Labbro verticale del bordo
-ax1.plot([R, R], [h_c, h_eff], lw=3)
-# Regione sigillo (riempimento)
-ax1.fill_betweenx([0, h_eff], rin, R, alpha=0.12, label="Sigillo (h_eff)")
-# Quote
-ax1.annotate("", xy=(rin, h_c*1.02), xytext=(R, h_c*1.02),
-             arrowprops=dict(arrowstyle="<->"))
-ax1.text(rin + 0.5*(R-rin), h_c*1.04, "w", ha="center", va="bottom")
-ax1.text(0.02*R, h_c+0.01, "Interno disco", va="bottom")
-ax1.text(R+0.01, (h_c+h_eff)/2, "Labbro", va="center", rotation=90)
-ax1.set_xlim(0, R + w)
-ax1.set_ylim(-0.01, h_c + 0.08)
-ax1.set_xlabel("r [m]")
-ax1.set_ylabel("z [m]")
-ax1.set_title("Geometria (sezione r–z)")
-ax1.legend(loc="upper right")
-fig1.tight_layout()
-fig1.savefig("figs/geometry.png", dpi=160)
+    P = apply_bc(P)
 
-# ---------------- Plot 2: Colormap con 3 subplot ----------------
-fig2, axes = plt.subplots(1, 3, figsize=(15, 4.8), constrained_layout=True)
+    # Density function
+    def rho_of(Pf, Tval):
+        return Pf / (p.Rg * Tval)
 
-# (a) Pressione
-im0 = axes[0].imshow(P, origin="lower",
-                     extent=[r.min(), r.max(), z.min(), z.max()],
-                     aspect="auto")
-axes[0].set_title("p(r,z) [Pa]")
-axes[0].set_xlabel("r [m]"); axes[0].set_ylabel("z [m]")
-fig2.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
+    # Iterative SOR solve for (1/r)∂r(r ρ kr ∂r P) + ∂z(ρ kz ∂z P) = 0
+    T = p.T_inf  # use uniform T; extend with energy solve if needed
+    rho = rho_of(P, T)
+    tol_abs = p.tol_rel * p_c
 
-# (b) Velocità radiale u_r
-im1 = axes[1].imshow(Ur, origin="lower",
-                     extent=[r.min(), r.max(), z.min(), z.max()],
-                     aspect="auto")
-axes[1].set_title("u_r(r,z) [m/s]")
-axes[1].set_xlabel("r [m]"); axes[1].set_ylabel("z [m]")
-fig2.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
+    for it in range(p.max_iter):
+        P_old = P.copy()
+        rho = rho_of(P, T)
 
-# (c) Velocità assiale u_z (≈0 nel modello)
-im2 = axes[2].imshow(Uz, origin="lower",
-                     extent=[r.min(), r.max(), z.min(), z.max()],
-                     aspect="auto")
-axes[2].set_title("u_z(r,z) [m/s]")
-axes[2].set_xlabel("r [m]"); axes[2].set_ylabel("z [m]")
-fig2.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
+        # Sweep interior points
+        for i in range(1, p.Nz-1):
+            for j in range(1, p.Nr-1):
+                rj = r[j]
+                # Avoid division by zero near the axis
+                if rj < 1e-12:
+                    rj = dr * 0.5
 
-fig2.savefig("figs/fields_tripanel.png", dpi=160)
+                # Coeffs at half steps (arithmetic mean for ρ at faces)
+                rho_jp = 0.5*(rho[i, j] + rho[i, j+1])
+                rho_jm = 0.5*(rho[i, j] + rho[i, j-1])
+                rho_ip = 0.5*(rho[i+1, j] + rho[i, j])
+                rho_im = 0.5*(rho[i-1, j] + rho[i, j])
 
-# Mostra figure (utile in VS Code)
-plt.show()
+                # Flux coefficients
+                # Radial term: (1/r) * ∂r [ r * rho * kr * ∂r P ]
+                Ar_p = (rj + 0.5*dr) * rho_jp * kr / (dr**2)
+                Ar_m = (rj - 0.5*dr) * rho_jm * kr / (dr**2)
+                # Axial term: ∂z [ rho * kz * ∂z P ]
+                Az_p = rho_ip * kz / (dz**2)
+                Az_m = rho_im * kz / (dz**2)
+
+                denom = (Ar_p + Ar_m) / rj + (Az_p + Az_m)
+                rhs = (Ar_p * P[i, j+1] + Ar_m * P[i, j-1]) / rj \
+                    + (Az_p * P[i+1, j] + Az_m * P[i-1, j])
+
+                P_new = rhs / (denom + 1e-30)
+                P[i, j] = (1 - p.omega) * P[i, j] + p.omega * P_new
+
+        # Re-apply BCs
+        P = apply_bc(P)
+
+        err = np.max(np.abs(P - P_old))
+        if err < tol_abs:
+            # print(f"Converged at iter {it}, err={err:.3e}")
+            break
+
+    # Velocities from Darcy
+    dPdr = np.zeros_like(P)
+    dPdz = np.zeros_like(P)
+    dPdr[:, 1:-1] = (P[:, 2:] - P[:, :-2]) / (2*dr)
+    dPdr[:, 0]    = (P[:, 1] - P[:, 0]) / dr
+    dPdr[:, -1]   = (P[:, -1] - P[:, -2]) / dr
+    dPdz[1:-1, :] = (P[2:, :] - P[:-2, :]) / (2*dz)
+    dPdz[0, :]    = (P[1, :] - P[0, :]) / dz
+    dPdz[-1, :]   = (P[-1, :] - P[-2, :]) / dz
+
+    u_r = -(kr / p.mu) * dPdr
+    u_z = -(kz / p.mu) * dPdz
+
+    return r, z, Rg, Zg, P, u_r, u_z, p_c, R_minus
+
+
+# ---------------------------- Plot helpers ----------------------------
+def make_plots(r, z, Rg, Zg, P, ur, uz, R_minus, h):
+    speed = np.sqrt(ur**2 + uz**2)
+    ur_abs = np.abs(ur)
+    uz_abs = np.abs(uz)
+
+    # Downsample vectors for quiver clarity
+    Nr, Nz = Rg.shape[1], Zg.shape[0]
+    step_r = max(1, Nr // 30)
+    step_z = max(1, Nz // 15)
+
+    Rq = Rg[::step_z, ::step_r]
+    Zq = Zg[::step_z, ::step_r]
+    urq = ur[::step_z, ::step_r]
+    uzq = uz[::step_z, ::step_r]
+
+    # 1) Quiver
+    plt.figure(figsize=(7, 4.5))
+    plt.quiver(Rq, Zq, urq, uzq, angles='xy', scale_units='xy', scale=None)
+    plt.xlabel('r [m]'); plt.ylabel('z [m]')
+    plt.title('Velocity field (quiver)')
+    plt.xlim(0, R_minus); plt.ylim(0, h)
+    plt.tight_layout()
+    plt.savefig('quiver_velocity.png', dpi=180)
+
+    # 2) |v| colormap
+    plt.figure(figsize=(7, 4.5))
+    plt.pcolormesh(Rg, Zg, speed, shading='auto')
+    plt.colorbar(label='|v| [arb. units]')
+    plt.xlabel('r [m]'); plt.ylabel('z [m]')
+    plt.title('Speed magnitude |v|')
+    plt.xlim(0, R_minus); plt.ylim(0, h)
+    plt.tight_layout()
+    plt.savefig('cmap_speed.png', dpi=180)
+
+    # 3) |u_r| colormap
+    plt.figure(figsize=(7, 4.5))
+    plt.pcolormesh(Rg, Zg, ur_abs, shading='auto')
+    plt.colorbar(label='|u_r| [arb. units]')
+    plt.xlabel('r [m]'); plt.ylabel('z [m]')
+    plt.title('Radial component |u_r|')
+    plt.xlim(0, R_minus); plt.ylim(0, h)
+    plt.tight_layout()
+    plt.savefig('cmap_ur.png', dpi=180)
+
+    # 4) |u_z| colormap
+    plt.figure(figsize=(7, 4.5))
+    plt.pcolormesh(Rg, Zg, uz_abs, shading='auto')
+    plt.colorbar(label='|u_z| [arb. units]')
+    plt.xlabel('r [m]'); plt.ylabel('z [m]')
+    plt.title('Axial component |u_z|')
+    plt.xlim(0, R_minus); plt.ylim(0, h)
+    plt.tight_layout()
+    plt.savefig('cmap_uz.png', dpi=180)
+
+    # 5) Pressure colormap
+    plt.figure(figsize=(7, 4.5))
+    plt.pcolormesh(Rg, Zg, P, shading='auto')
+    plt.colorbar(label='p [Pa]')
+    plt.xlabel('r [m]'); plt.ylabel('z [m]')
+    plt.title('Pressure field')
+    plt.xlim(0, R_minus); plt.ylim(0, h)
+    plt.tight_layout()
+    plt.savefig('cmap_pressure.png', dpi=180)
+
+
+# ---------------------------- Main ----------------------------
+if __name__ == '__main__':
+    pars = Params()
+    r, z, Rg, Zg, P, ur, uz, p_c, R_minus = solve_core(pars)
+    # Direction sanity check: expect downward vertical velocities in the core (uz < 0)
+    # Uncomment to print simple diagnostics:
+    # print('Mean uz sign (should be negative):', np.sign(np.mean(uz)))
+    make_plots(r, z, Rg, Zg, P, ur, uz, R_minus, pars.h)
+    print('Saved: quiver_velocity.png, cmap_speed.png, cmap_ur.png, cmap_uz.png, cmap_pressure.png')
