@@ -110,27 +110,35 @@ This closure is valid provided that:
 It is particularly suited to parametric design and control studies where the detailed jet micro-structure is not resolved.
 
 \subsection{Boundary Conditions and Curtain Coupling}
-The air curtain imposes a sealing pressure distribution along the rim $r=R^{-}$,
+The air curtain imposes along the rim $r=R^{-}$ a \emph{sealing} pressure distribution,
+i.e., an effective barrier that resists outward leakage from the cushion:
 \begin{equation}
   p_{\mathrm{edge}}(z)=p_0+\Delta p\,\Phi\!\left(\frac{z}{h}\right),
   \qquad
   \Delta p=C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}}.
 \end{equation}
-Since the slot jet is directed \emph{downwards}, the sealing is strongest near the floor
-($z\simeq 0$) and decays toward the top ($z=h$). We therefore adopt a
-monotone \emph{decreasing} profile
+Because the slot jet is issued \emph{downwards}, the jet is most energetic near the
+slot (top, $z=h$) and less effective near the floor ($z=0$). In this reduced model
+$\Phi$ represents the \emph{sealing effectiveness} (not the static pressure inside the
+jet), therefore it should be \emph{increasing} with height:
 \begin{equation}
-  \Phi(\zeta)= (1-\zeta)^{m}, \qquad \zeta=z/h\in[0,1],\quad m\gtrsim 1,
+  \Phi(\zeta)= \zeta^{m}, \qquad \zeta=z/h\in[0,1],\ \ m\gtrsim 1,
 \end{equation}
-so that $\Phi(0)=1$ and $\Phi(1)=0$.
-
-On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
+so that $\Phi(0)=0$ (weak sealing near the floor) and $\Phi(1)=1$ (strong sealing
+near the slot). On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 \begin{equation}
   \partial_z p(r,0)=\partial_z p(r,h)=0,
 \end{equation}
-while $r=0$ enforces symmetry $\partial_r p(0,z)=0$.  The inner make-up jet is
-\emph{not} imposed as a local boundary condition in the core; its effect enters through
-the global mass balance (Sec.~\ref{sec:shooting}).
+while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is
+\emph{not} imposed as a local boundary condition; its effect enters through the global
+mass balance (Sec.~\ref{sec:shooting}).
+\paragraph{Remark on $\Phi$: sealing vs static pressure.}
+The increasing profile $\Phi(\zeta)=\zeta^m$ is chosen to represent the \emph{sealing
+effectiveness} of the downward curtain (barrier highest near the slot). The local static
+pressure inside the jet would show the opposite trend (lower near the slot, higher near
+the floor), but the reduced core model uses a rim \emph{sealing} pressure as boundary
+data rather than the jet's internal static distribution.
+
 
 \section{Core Model and Sealing Condition (summary)}
 We adopt the anisotropic Stokes--Darcy closure for mean velocities
@@ -145,16 +153,17 @@ The design-oriented pressure equation in the core is
   \frac{1}{r}\,\partial_r\!\big(r\,\rho\,\kappa_r\,\partial_r p\big)
   +\partial_z\!\big(\rho\,\kappa_z\,\partial_z p\big)=0,
 \end{equation}
-with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a
-\emph{rim pressure} at $r=R^{-}$ induced by the turned curtain,
+with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a \emph{rim pressure}
+at $r=R^{-}$ induced by the turned curtain,
 \begin{equation}
   p_{\mathrm{edge}}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),\qquad
   \Delta p = C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}},\quad
-  \Phi(\zeta)=(1-\zeta)^m.
+  \Phi(\zeta)=\zeta^m.
 \end{equation}
-Note that the downward-oriented curtain motivates a decreasing profile $\Phi$; we do
-\emph{not} rely on the sign of $\partial_z p$ to prescribe a particular $w$ at the
-boundaries, which remain impermeable in the reduced model.
+Here $\Phi$ models the sealing effectiveness (barrier) rather than the jet's local static
+pressure; boundaries remain impermeable (Neumann), and no vertical through-flow is
+prescribed in the reduced core.
+
 
 \section{Non-Dimensionalization and Plotting Conventions}
 We scale
@@ -176,14 +185,14 @@ with boundary conditions
 \begin{equation}
   \partial_{\hat r}\hat p(0,\hat z)=0,\qquad
   \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
-  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\,
-  \Phi_{\downarrow}(\hat z),
+  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\,\Phi_{\mathrm{seal}}(\hat z),
 \end{equation}
 where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$, $\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/p_c
 = C_t\,\rho_j U_{\mathrm{out}}^2\,b/(h_{\mathrm{eff}}\,p_c)$, and
 \begin{equation}
-  \Phi_{\downarrow}(\hat z)=(1-\hat z)^{m}.
+  \Phi_{\mathrm{seal}}(\hat z)=\hat z^{m}.
 \end{equation}
+
 
 Natural velocity scales are
 \begin{equation}
@@ -206,19 +215,23 @@ constraint $\overline{p}=p_c$ and recover flows and power, we adopt:
   \item Choose an initial curtain intensity (e.g.\ $U_{\mathrm{out}}$ or $C_t$), hence
         $\Pi_{\mathrm{edge}}$.
   \item Solve the core equation with the rim Dirichlet condition.
-  \item Compute the area-mean cushion pressure
-  \(
-    \overline{p}=\frac{1}{\pi R_{\mathrm{tot}}^2}\!
+  \item Compute the area-mean cushion pressure over the core
+  \[
+    \overline{p}_{\mathrm{core}}=\frac{1}{\pi (R^-)^2}
     \int_0^{R^{-}}\!\!\int_0^h (p-p_0)\,2\pi r\,dz\,dr.
-  \)
-  \item If $|\overline{p}-p_c|>\varepsilon$, update the curtain intensity and repeat.
+  \]
+  Let $p_c^{\mathrm{core}} = p_c \left(\frac{R_{\mathrm{tot}}}{R^-}\right)^2$ denote the
+  target mean over the core compatible with the original definition
+  $p_c=W/(\pi R_{\mathrm{tot}}^2)$.
+  \item If $\big|\overline{p}_{\mathrm{core}}-p_c^{\mathrm{core}}\big|>\varepsilon$, update
+  the curtain intensity and repeat.
   \item With $\overline{p}=p_c$, estimate lateral losses $\dot m_{\mathrm{loss}}$ (thin-film
-        or orifice model depending on $Re_h$) and the make-up flow
-        \(
-          \dot m_{\mathrm{in}}=\dot m_{\mathrm{loss}}-\beta\,\dot m_{\mathrm{out}},
-        \)
-        where $\beta$ will be implemented in the next code revision. The shaft power follows
-        from the pressure rises in the two jet circuits.
+  or orifice model depending on $Re_h$) and the make-up flow
+  \(
+    \dot m_{\mathrm{in}}=\dot m_{\mathrm{loss}}-\beta\,\dot m_{\mathrm{out}},
+  \)
+  where $\beta$ will be implemented in the next code revision. The shaft power follows
+  from the pressure rises in the two jet circuits.
 \end{enumerate}
 
 
