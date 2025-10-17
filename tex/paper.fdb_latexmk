@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1760712699.68857 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760712700.97195 0
+["pdflatex"] 1760713270.94878 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760713272.25315 0
   "../figs/cmap_pressure.png" 1760627865 45626 7f635f90ee0abda226c902cd762048fe ""
   "../figs/cmap_speed.png" 1760627864 44416 698a1a312576ded5396ba8016c74b5a7 ""
   "../figs/cmap_ur.png" 1760627864 41237 55e12680349b4565c2ba507c67150509 ""
@@ -138,10 +138,10 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/dicts/translations-basic-dictionary-english.trsl" 1644048522 5588 0c1628daf15f4411ff1f463114c634a3 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760712697 14883 c74f1051fe2ae6869c8a97777d0e2947 ""
-  "paper.aux" 1760712700 4474 4ad17cf32fd460cff265a07a1966461f "pdflatex"
-  "paper.out" 1760712700 2629 19339fdafa69efdf961d7b6d2c5a1ad7 "pdflatex"
-  "paper.tex" 1760712697 14883 c74f1051fe2ae6869c8a97777d0e2947 ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760713269 14301 3d6b34ff46039d8142ffc5bb0f0431f6 ""
+  "paper.aux" 1760713272 4343 20ff2f047c6d448fd852c6a23102b286 "pdflatex"
+  "paper.out" 1760713272 2629 19339fdafa69efdf961d7b6d2c5a1ad7 "pdflatex"
+  "paper.tex" 1760713269 14301 3d6b34ff46039d8142ffc5bb0f0431f6 ""
   (generated)
   "paper.aux"
   "paper.log"

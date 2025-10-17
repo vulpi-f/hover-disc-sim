@@ -117,27 +117,22 @@ i.e., an effective barrier that resists outward leakage from the cushion:
   \qquad
   \Delta p=C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}}.
 \end{equation}
-Because the slot jet is issued \emph{downwards}, the jet is most energetic near the
-slot (top, $z=h$) and less effective near the floor ($z=0$). In this reduced model
-$\Phi$ represents the \emph{sealing effectiveness} (not the static pressure inside the
-jet), therefore it should be \emph{increasing} with height:
+Because the slot jet is issued \emph{downwards}, it is most energetic near the slot (top,
+$z=h$) and less effective near the floor ($z=0$). In this reduced model $\Phi$ represents
+the \emph{sealing effectiveness} (not the jet's local static pressure), therefore it
+should be \emph{increasing} with height:
 \begin{equation}
   \Phi(\zeta)= \zeta^{m}, \qquad \zeta=z/h\in[0,1],\ \ m\gtrsim 1,
 \end{equation}
-so that $\Phi(0)=0$ (weak sealing near the floor) and $\Phi(1)=1$ (strong sealing
-near the slot). On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
+so that $\Phi(0)=0$ (weak sealing near the floor) and $\Phi(1)=1$ (strong sealing near
+the slot).
+On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 \begin{equation}
   \partial_z p(r,0)=\partial_z p(r,h)=0,
 \end{equation}
 while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is
-\emph{not} imposed as a local boundary condition; its effect enters through the global
-mass balance (Sec.~\ref{sec:shooting}).
-\paragraph{Remark on $\Phi$: sealing vs static pressure.}
-The increasing profile $\Phi(\zeta)=\zeta^m$ is chosen to represent the \emph{sealing
-effectiveness} of the downward curtain (barrier highest near the slot). The local static
-pressure inside the jet would show the opposite trend (lower near the slot, higher near
-the floor), but the reduced core model uses a rim \emph{sealing} pressure as boundary
-data rather than the jet's internal static distribution.
+\emph{not} imposed as a local boundary condition in the core; its effect enters through
+the global mass balance (Sec.~\ref{sec:shooting}).
 
 
 \section{Core Model and Sealing Condition (summary)}
@@ -183,9 +178,7 @@ The non-dimensional elliptic equation is
 \end{equation}
 with boundary conditions
 \begin{equation}
-  \partial_{\hat r}\hat p(0,\hat z)=0,\qquad
-  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
-  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\,\Phi_{\mathrm{seal}}(\hat z),
+  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\, \Phi_{\mathrm{seal}}(\hat z),
 \end{equation}
 where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$, $\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/p_c
 = C_t\,\rho_j U_{\mathrm{out}}^2\,b/(h_{\mathrm{eff}}\,p_c)$, and
@@ -225,6 +218,7 @@ constraint $\overline{p}=p_c$ and recover flows and power, we adopt:
   $p_c=W/(\pi R_{\mathrm{tot}}^2)$.
   \item If $\big|\overline{p}_{\mathrm{core}}-p_c^{\mathrm{core}}\big|>\varepsilon$, update
   the curtain intensity and repeat.
+
   \item With $\overline{p}=p_c$, estimate lateral losses $\dot m_{\mathrm{loss}}$ (thin-film
   or orifice model depending on $Re_h$) and the make-up flow
   \(
