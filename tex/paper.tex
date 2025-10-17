@@ -136,6 +136,9 @@ On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is not
 imposed as a local BC in the core; its effect enters the \emph{global} mass balance
 (see Sec.~\ref{sec:shooting}).
+This expression guarantees continuity of rim pressure along $z$ and smoothly connects
+the low static pressure region at the slot exit with the higher static build-up near the
+floor.
 
 \paragraph{Remark on sealing vs static pressure.}
 The composite rim pressure in Eq.~\eqref{eq:rim_pressure_composite} is a
@@ -167,7 +170,8 @@ Eq.~\eqref{eq:rim_pressure_composite}:
 \end{equation}
 Here the sealing contribution models the barrier action of the downward curtain
 (rising with jet momentum near the slot), while boundaries at $z=0,h$ remain
-impermeable in the reduced core.
+impermeable in the reduced core. The coefficients $C_p$ and $C_s$ retain the same meaning and order of magnitude as
+introduced in Sec.~\ref{sec:boundaryconditions}.
 
 
 
@@ -191,9 +195,8 @@ with boundary conditions
 where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
 $\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/(\rho_j U_{\mathrm{out}}^2)$ (so that
 $C_p,C_s$ are dimensionless). If one prefers a single effective term,
-set $C_p=0$ and rename $C_s\to C_t$.
-
-
+set $C_p=0$ and rename $C_s\to C_t$. When using the composite form, $C_t$ is omitted and replaced by $(C_p,C_s)$ as separate
+dimensionless sealing coefficients.
 
 Natural velocity scales are
 \begin{equation}
@@ -235,6 +238,8 @@ constraint $\overline{p}=p_c$ and recover flows and power, we adopt:
   where $\beta$ will be implemented in the next code revision. The shaft power follows
   from the pressure rises in the two jet circuits.
 \end{enumerate}
+The shooting procedure therefore adjusts the curtain intensity until the mean cushion
+pressure over the core area equals $p_c^{\mathrm{core}}$.
 
 
 \section{Simulation Outputs}
@@ -326,6 +331,9 @@ $\mathcal{A}$ & Permeability anisotropy parameter \\
 $\hat r,\hat z,\hat p$ & Dimensionless coordinates and pressure \\
 $\hat u,\hat w$ & Dimensionless velocity components \\
 $S$ & Velocity anisotropy ratio $S=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)$ \\ \bottomrule
+$C_p$ & static-pressure coefficient for rim build-up (order $10^{-1}$)\\
+$C_s$ & sealing-effectiveness coefficient for high-momentum curtain (order $1$)\\
+$m,n$ & shape exponents for sealing and static contributions, respectively\\
 \end{tabular}
 
 \end{document}
