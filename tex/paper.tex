@@ -110,30 +110,40 @@ This closure is valid provided that:
 It is particularly suited to parametric design and control studies where the detailed jet micro-structure is not resolved.
 
 \subsection{Boundary Conditions and Curtain Coupling}
-The air curtain imposes along the rim $r=R^{-}$ a \emph{sealing} pressure distribution,
-i.e., an effective barrier that resists outward leakage from the cushion:
+The outer slot jet issues \emph{downwards} and acts as an \emph{air curtain} that
+limits radial leakage from the cushion. The pressure imposed along the rim
+$r=R^{-}$ is modeled as the superposition of two physically motivated
+contributions:
 \begin{equation}
-  p_{\mathrm{edge}}(z)=p_0+\Delta p\,\Phi\!\left(\frac{z}{h}\right),
-  \qquad
-  \Delta p=C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}}.
+  p_{\mathrm{edge}}(z)
+  = p_0 + \rho_j U_{\mathrm{out}}^2\,
+    \big[\, C_p\, (1-\zeta)^{n} \;+\; C_s\, \zeta^{m} \,\big],
+  \qquad \zeta=\frac{z}{h}.
+  \label{eq:rim_pressure_composite}
 \end{equation}
-Because the slot jet is issued \emph{downwards}, it is most energetic near the slot (top,
-$z=h$) and less effective near the floor ($z=0$). In this reduced model $\Phi$ represents
-the \emph{sealing effectiveness} (not the jet's local static pressure), therefore it
-should be \emph{increasing} with height:
-\begin{equation}
-  \Phi(\zeta)= \zeta^{m}, \qquad \zeta=z/h\in[0,1],\ \ m\gtrsim 1,
-\end{equation}
-so that $\Phi(0)=0$ (weak sealing near the floor) and $\Phi(1)=1$ (strong sealing near
-the slot).
+The first (static) term approximates the increase of static pressure associated with
+jet deceleration and turning near the floor ($\zeta\!\to\!0$). The second (sealing)
+term represents the \emph{barrier effectiveness} near the slot ($\zeta\!\to\!1$),
+which grows with jet momentum. Typical choices are $m,n\in[1,2]$ and
+$C_p,C_s=O(10^{-1}\!\!-\!1)$; in the simplest reduced form, one may merge both
+effects into a single effective coefficient $C_t$,
+$\Delta p = C_t \rho_j U_{\mathrm{out}}^2 b / h_{\mathrm{eff}}$.
+
 On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 \begin{equation}
   \partial_z p(r,0)=\partial_z p(r,h)=0,
 \end{equation}
-while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is
-\emph{not} imposed as a local boundary condition in the core; its effect enters through
-the global mass balance (Sec.~\ref{sec:shooting}).
+while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is not
+imposed as a local BC in the core; its effect enters the \emph{global} mass balance
+(see Sec.~\ref{sec:shooting}).
 
+\paragraph{Remark on sealing vs static pressure.}
+The composite rim pressure in Eq.~\eqref{eq:rim_pressure_composite} is a
+\emph{modeling device}: the $(1-\zeta)^n$ term provides a minimal representation
+of static-pressure build-up as the curtain turns near the floor, while the
+$\zeta^m$ term encodes the sealing effectiveness of a high-momentum jet near the slot.
+This separation avoids conflating the jet’s low static pressure near the slot with
+its strong \emph{barrier} effect on radial leakage.
 
 \section{Core Model and Sealing Condition (summary)}
 We adopt the anisotropic Stokes--Darcy closure for mean velocities
@@ -148,16 +158,17 @@ The design-oriented pressure equation in the core is
   \frac{1}{r}\,\partial_r\!\big(r\,\rho\,\kappa_r\,\partial_r p\big)
   +\partial_z\!\big(\rho\,\kappa_z\,\partial_z p\big)=0,
 \end{equation}
-with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a \emph{rim pressure}
-at $r=R^{-}$ induced by the turned curtain,
+with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a rim pressure
+at $r=R^{-}$ given by the composite sealing model in
+Eq.~\eqref{eq:rim_pressure_composite}:
 \begin{equation}
-  p_{\mathrm{edge}}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),\qquad
-  \Delta p = C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}},\quad
-  \Phi(\zeta)=\zeta^m.
+  p_{\mathrm{edge}}(z) = p_0 + \rho_j U_{\mathrm{out}}^2
+  \big[ C_p(1-\zeta)^{n} + C_s \zeta^{m} \big], \qquad \zeta=z/h.
 \end{equation}
-Here $\Phi$ models the sealing effectiveness (barrier) rather than the jet's local static
-pressure; boundaries remain impermeable (Neumann), and no vertical through-flow is
-prescribed in the reduced core.
+Here the sealing contribution models the barrier action of the downward curtain
+(rising with jet momentum near the slot), while boundaries at $z=0,h$ remain
+impermeable in the reduced core.
+
 
 
 \section{Non-Dimensionalization and Plotting Conventions}
@@ -169,22 +180,19 @@ We scale
   \hat T=\frac{T}{T_\infty},\quad
   \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\ \ \Pi_p=\frac{p_c}{p_0}.
 \end{equation}
-The non-dimensional elliptic equation is
-\begin{equation}
-  \frac{1}{\hat r}\,\partial_{\hat r}\!\big(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\big)
-  + \mathcal{A}\,\partial_{\hat z}\!\big(\hat\rho\,\partial_{\hat z}\hat p\big)=0,
-  \qquad
-  \mathcal{A}=\frac{\alpha_z}{\alpha_r}\left(\frac{R_{\mathrm{tot}}}{h}\right)^2,
-\end{equation}
 with boundary conditions
 \begin{equation}
-  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\, \Phi_{\mathrm{seal}}(\hat z),
+  \partial_{\hat r}\hat p(0,\hat z)=0,\qquad
+  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
+  \hat p(\hat R^{-},\hat z)=
+  \Pi_{\mathrm{edge}}\,
+  \big[\, C_p (1-\hat z)^{n} + C_s \hat z^{m} \,\big],
 \end{equation}
-where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$, $\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/p_c
-= C_t\,\rho_j U_{\mathrm{out}}^2\,b/(h_{\mathrm{eff}}\,p_c)$, and
-\begin{equation}
-  \Phi_{\mathrm{seal}}(\hat z)=\hat z^{m}.
-\end{equation}
+where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
+$\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/(\rho_j U_{\mathrm{out}}^2)$ (so that
+$C_p,C_s$ are dimensionless). If one prefers a single effective term,
+set $C_p=0$ and rename $C_s\to C_t$.
+
 
 
 Natural velocity scales are
@@ -274,6 +282,19 @@ The make-up jet is not imposed as a local BC in the core; it enters only via the
 mass-balance closure. Thermal effects are neglected ($T=T_\infty$). The bypass parameter
 $\beta$ is defined conceptually but not used yet in the code; it will be included together
 with the automated shooting loop and power estimates.
+
+\paragraph{Appendix: minimal rationale for the composite rim pressure.}
+Consider a control volume hugging the rim over height $h$ and thickness $O(b)$.
+A downward slot jet of density $\rho_j$ and speed $U_{\mathrm{out}}$ is deflected
+into a radial wall-jet of speed $U_r(z)$ near the floor. A crude momentum balance
+suggests a static build-up $\Delta p_{\mathrm{stat}}\sim \rho_j U_{\mathrm{out}}^2
+\,\mathcal{O}(1)$ concentrated near $\zeta\!\to\!0$, while the resistance to
+cross-flow (sealing) scales with the jet momentum flux impinging near the slot,
+$\Delta p_{\mathrm{seal}}\sim \rho_j U_{\mathrm{out}}^2\,\mathcal{O}(1)$ for
+$\zeta\!\to\!1$. The composite form
+$\rho_j U_{\mathrm{out}}^2\,[\,C_p(1-\zeta)^n + C_s \zeta^m\,]$ is thus a
+first-order surrogate capturing both effects with two tunable, dimensionless
+coefficients $(C_p,C_s)$ and mild shape exponents $(m,n)$.
 
 
 \section{Nomenclature}
