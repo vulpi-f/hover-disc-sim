@@ -56,7 +56,7 @@ class Params:
     Ct: float = 1.0           # [-] curtain factor
     lam: float = 0.4          # [-] ψ(z)=1+lam*z/h
     rho_j: float = 1.20       # [kg/m^3] jet density
-    U_corona: float = 40.0    # [m/s] jet speed
+    U_out: float = 40.0    # [m/s] jet speed
     # Stokes–Darcy closure
     alpha_r: float = 0.12     # [-] k_r = α_r h^2
     alpha_z: float = 0.05     # [-] k_z = α_z h^2
@@ -96,7 +96,7 @@ def solve_core(pars: Params):
     kz = pars.alpha_z * pars.h**2
 
     # Rim pressure increment from curtain momentum
-    Delta_p_edge = pars.Ct * (pars.rho_j * pars.U_corona**2 * pars.b) / pars.h_eff
+    Delta_p_edge = pars.Ct * (pars.rho_j * pars.U_out**2 * pars.b) / pars.h_eff
 
     # Grid (dimensional)
     r = np.linspace(0.0, R_minus, pars.Nr)
