@@ -13,6 +13,7 @@
 \usepackage{booktabs}
 \usepackage{physics}
 \usepackage{hyperref}
+\usepackage{float}
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 
 \title{Design Methodology for a Dual-Jet Hovering Disc with Concentric Air Curtains:\\
@@ -116,24 +117,94 @@ The air curtain imposes a sealing pressure distribution along the rim $r=R^{-}$,
 Choosing $\Phi(z)$ increasing with $z$ ensures $\partial_z p>0$ and hence a downward core flow $w<0$ via the Darcy relation. 
 On $z=0$ and $z=h$, the no-penetration condition ($\partial_z p=0$) holds in the reduced model; these planes are streamlines of the slow core flow.
 
-\section{Non-Dimensionalization (Summary)}
-Define dimensionless variables:
+\section{Core Model and Sealing Condition (summary)}
+We adopt the anisotropic Stokes--Darcy closure for mean velocities
 \begin{equation}
-  \hat r=r/R_{\mathrm{tot}},\quad \hat z=z/h,\quad 
-  \hat p=(p-p_0)/p_c,\quad \hat\rho=\rho/\rho_\infty,
+  u = -\frac{\kappa_r}{\mu}\,\partial_r p,\qquad
+  w = -\frac{\kappa_z}{\mu}\,\partial_z p,\qquad
+  \kappa_r=\alpha_r h^2,\ \kappa_z=\alpha_z h^2,
 \end{equation}
-and permeability anisotropy $\mathcal{A}=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)^2$.
-The governing equation becomes
+with compressible continuity and ideal-gas state $p=\rho R_g T$.
+The design-oriented pressure equation in the core reads
 \begin{equation}
-  \frac{1}{\hat r}\partial_{\hat r}\!\left(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\right)
-  +\mathcal{A}\,\partial_{\hat z}\!\left(\hat\rho\,\partial_{\hat z}\hat p\right)=0,
+  \frac{1}{r}\,\partial_r\!\big(r\,\rho\,\kappa_r\,\partial_r p\big)+\partial_z\!\big(\rho\,\kappa_z\,\partial_z p\big)=0,
 \end{equation}
-with boundary conditions
+with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a \emph{rim pressure} at $r=R^{-}$ induced by the turned curtain,
 \begin{equation}
-  \partial_{\hat r}\hat p(0,\hat z)=0,\qquad
-  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
-  \hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\Phi(\hat z).
+  p_{\mathrm{edge}}(z)=p_0 + \Delta p\,\Phi\!\left(\frac{z}{h}\right),\qquad
+  \Delta p = C_t\,\frac{\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}}.
 \end{equation}
+To ensure a downward vertical component in the core ($w<0$), one convenient choice is an \emph{increasing} profile $\Phi(\zeta)$ so that $\partial_z p>0$ and $w=-(\kappa_z/\mu)\partial_z p<0$.
+
+\section{Non-Dimensionalization and Plotting Conventions}
+We scale
+\begin{equation}
+  \hat r=\frac{r}{R_{\mathrm{tot}}},\quad
+  \hat z=\frac{z}{h},\quad
+  \hat p=\frac{p-p_0}{p_c},\quad
+  \hat T=\frac{T}{T_\infty},\quad
+  \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\ \ \Pi_p=\frac{p_c}{p_0}.
+\end{equation}
+The non-dimensional elliptic equation is
+\begin{equation}
+  \frac{1}{\hat r}\,\partial_{\hat r}\!\big(\hat r\,\hat\rho\,\partial_{\hat r}\hat p\big)
+  + \mathcal{A}\,\partial_{\hat z}\!\big(\hat\rho\,\partial_{\hat z}\hat p\big)=0,\qquad
+  \mathcal{A}=\frac{\alpha_z}{\alpha_r}\left(\frac{R_{\mathrm{tot}}}{h}\right)^2,
+\end{equation}
+with BCs $\partial_{\hat r}\hat p(0,\hat z)=0$, $\partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0$, and
+$\hat p(\hat R^{-},\hat z)=\Pi_{\mathrm{edge}}\Phi(\hat z)$, where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
+\begin{equation}
+  \Pi_{\mathrm{edge}}=\frac{p_{\mathrm{edge}}-p_0}{p_c}=\frac{C_t\,\rho_j U_{\mathrm{out}}^2\,b}{h_{\mathrm{eff}}\,p_c}.
+\end{equation}
+Natural velocity scales are
+\begin{equation}
+  U_r^0=\frac{\kappa_r}{\mu}\,\frac{p_c}{R_{\mathrm{tot}}},\qquad
+  U_z^0=\frac{\kappa_z}{\mu}\,\frac{p_c}{h},\qquad
+  S=\frac{U_z^0}{U_r^0}=\frac{\alpha_z}{\alpha_r}\frac{R_{\mathrm{tot}}}{h}.
+\end{equation}
+The dimensionless velocities for plotting are
+\begin{equation}
+  \hat u=-\partial_{\hat r}\hat p,\qquad
+  \hat w=-\partial_{\hat z}\hat p,\qquad
+  \hat V_{\mathrm{iso}}=\sqrt{\hat u^{\,2}+S^{2}\hat w^{\,2}}.
+\end{equation}
+
+\section{Simulation Outputs}
+The results produced from the model are shown in this section.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/quiver_velocity.png}
+  \caption{Non-dimensional velocity field (quiver). Vectors show $(\hat u,\,S\hat w)$ for isotropic visual scaling; downward components reflect the vertical-jet condition at $z=h$.}
+  \label{fig:quiver}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_speed.png}
+  \caption{Colormap of the non-dimensional isotropic speed magnitude $\hat V_{\mathrm{iso}}=\sqrt{\hat u^{\,2}+S^{2}\hat w^{\,2}}$.}
+  \label{fig:cmap_speed}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_ur.png}
+  \caption{Colormap of the non-dimensional radial component magnitude $|\hat u|$.}
+  \label{fig:cmap_ur}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_uz.png}
+  \caption{Colormap of the non-dimensional axial component magnitude $|\hat w|$.}
+  \label{fig:cmap_uz}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{../figs/cmap_pressure.png}
+  \caption{Colormap of the non-dimensional pressure $\hat p$.}
+  \label{fig:cmap_p}
+\end{figure}
 
 \section{Nomenclature}
 \begin{tabular}{@{}ll@{}}
