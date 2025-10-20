@@ -46,6 +46,8 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \item $\dot{m}_{\mathrm{in}}$ -- air mass flow entering internal region.
   \item $\dot{m}_{\mathrm{out}}$ -- air mass flow of outer region.
   \item $\dot{m}_{\mathrm{loss}}$ -- air mass flow exiting internal region.
+  \item $b_0$ -- slot thickness of the outer curtain jet at injection.
+  \item $H$ -- effective curtain height (equal to $h$ in this study, representing the vertical extent over which the curtain resists leakage).
 \end{itemize}
 
 \begin{figure}[t]
@@ -115,43 +117,9 @@ limits radial leakage from the cushion. The pressure imposed along the rim
 $r=R^{-}$ is modeled as the superposition of two physically motivated
 contributions:
 \begin{equation}
-  p_{\mathrm{edge}}(z)
-  = p_0 + \rho_j U_{\mathrm{out}}^2\,
-    \big[\, C_p\, (1-\zeta)^{n} \;+\; C_s\, \zeta^{m} \,\big],
-  \qquad \zeta=\frac{z}{h}.
-  \label{eq:rim_pressure_composite}
-\end{equation}
-The first (static) term approximates the increase of static pressure associated with
-jet deceleration and turning near the floor ($\zeta\!\to\!0$). The second (sealing)
-term represents the \emph{barrier effectiveness} near the slot ($\zeta\!\to\!1$),
-which grows with jet momentum. Typical choices are $m,n\in[1,2]$ and
-$C_p,C_s=O(10^{-1}\!\!-\!1)$; in the simplest reduced form, one may merge both
-effects into a single effective coefficient $C_t$,
-$\Delta p = C_t \rho_j U_{\mathrm{out}}^2 b / h_{\mathrm{eff}}$.
-\paragraph{Momentum-based sealing model (deflection modulus).}
-While Eq.~\eqref{eq:rim_pressure_composite} is convenient for tuning, in this work we
-\emph{adopt} a curtain coupling based on the jet's momentum flux, which removes ad-hoc coefficients and matches the physics of air-curtain ``pressure sealing''. 
-Consider a 2D downward plane jet with inlet thickness $b_0$ and speed $U_0$ spanning a height $H$. 
-Let $\Delta P\!=\!p_L-p_R$ be the lateral pressure difference the curtain must resist (left: high pressure, right: ambient).
-Define the \emph{deflection modulus} (momentum index)
-\[
-D_m \;=\; \frac{\rho\,U_0^2\,b_0}{\Delta P\,H}.
-\]
-Experiments and integral analyses show that a minimum $D_{m,\min}$ (order $10^{-1}$) is required for the jet to reach the floor without breakthrough. 
-The maximum sustainable pressure difference then reads
-\[
-\Delta P_{\max} \;=\; \frac{\rho\,U_0^2\,b_0}{H}\,\frac{1}{D_{m,\min}}.
-\]
-To reflect the fact that sealing is strongest near the slot and weakest near the floor (where the jet spreads and impinges), we model the \emph{available sealing} along $z$ by the jet spreading law $b(z)\approx b_0+2 s z$ with a turbulent spread parameter $s\in[0.06,0.09]$ and $U(z)\approx U_0\sqrt{b_0/b(z)}$ from momentum conservation. 
-We then prescribe the rim pressure as
-\begin{equation}
-  \boxed{\,p_{\mathrm{edge}}(z)=p_0 + \min\!\Big(\Delta P,\ \frac{\rho\,U(z)^2\,b(z)}{H}\,\frac{1}{D_{m,\min}}\Big)\,}
+  p_{\mathrm{edge}}(z)=p_0 + \min\!\Big(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Big),\qquad \zeta=\frac{z}{H}.
   \label{eq:p_edge_momentum}
 \end{equation}
-so that the curtain acts as an effective barrier near the slot ($z\!\approx\!h$) and gradually ``leaks'' near the floor ($z\!\to\!0$), without artificial shaping. 
-In practice, we use \eqref{eq:p_edge_momentum} as the \emph{default} coupling and retain \eqref{eq:rim_pressure_composite} as a legacy alternative for sensitivity tests.
-
-
 
 On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 \begin{equation}
@@ -165,7 +133,7 @@ the low static pressure region at the slot exit with the higher static build-up 
 floor.
 
 \paragraph{Remark on sealing vs static pressure.}
-The composite rim pressure in Eq.~\eqref{eq:rim_pressure_composite} is a
+The composite rim pressure in Eq.~\eqref{eq:p_edge_momentum} is a
 \emph{modeling device}: the $(1-\zeta)^n$ term provides a minimal representation
 of static-pressure build-up as the curtain turns near the floor, while the
 $\zeta^m$ term encodes the sealing effectiveness of a high-momentum jet near the slot.
@@ -187,7 +155,7 @@ The design-oriented pressure equation in the core is
 \end{equation}
 with BCs: symmetry at $r=0$; no-normal-flow at $z=0$ and $z=h$; and a rim pressure
 at $r=R^{-}$ given by the composite sealing model in
-Eq.~\eqref{eq:rim_pressure_composite}:
+Eq.~\eqref{eq:p_edge_momentum}:
 \begin{equation}
   p_{\mathrm{edge}}(z) = p_0 + \rho_j U_{\mathrm{out}}^2
   \big[ C_p(1-\zeta)^{n} + C_s \zeta^{m} \big], \qquad \zeta=z/h.
@@ -197,8 +165,6 @@ Here the sealing contribution models the barrier action of the downward curtain
 impermeable in the reduced core. The coefficients $C_p$ and $C_s$ retain the same meaning and order of magnitude as
 introduced in Sec.~\ref{sec:boundaryconditions}.
 
-
-
 \section{Non-Dimensionalization and Plotting Conventions}
 We scale
 \begin{equation}
@@ -206,31 +172,41 @@ We scale
   \hat z=\frac{z}{h},\quad
   \hat p=\frac{p-p_0}{p_c},\quad
   \hat T=\frac{T}{T_\infty},\quad
-  \hat\rho=\frac{\rho}{\rho_\infty}=\frac{1+\Pi_p\,\hat p}{\hat T},\ \ \Pi_p=\frac{p_c}{p_0}.
+  \hat\rho=\frac{\rho}{\rho_\infty}
+  =\frac{1+\Pi_p\,\hat p}{\hat T},\qquad
+  \Pi_p=\frac{p_c}{p_0}.
 \end{equation}
 with boundary conditions
 \begin{equation}
   \partial_{\hat r}\hat p(0,\hat z)=0, \qquad
-  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
-  \hat p(\hat R^{-},\hat z)= \hat p_{\mathrm{edge}}(\hat z), % default: momentum-based \eqref{eq:p_edge_momentum}; legacy: \eqref{eq:rim_pressure_composite}
+  \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0, \qquad
+  \hat p(\hat R^{-},\hat z)=\hat p_{\mathrm{edge}}(\hat z),
 \end{equation}
+where
 \begin{equation}
-  \quad\text{with}\quad 
-\hat p_{\mathrm{edge}}(\hat z) = \frac{p_{\mathrm{edge}}(z)-p_0}{p_c},\ \ \hat z=z/h.
+  \hat p_{\mathrm{edge}}(\hat z)
+  =\frac{1}{p_c}\,
+   \min\!\Big(
+      \Delta P,\;
+      \frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}
+    \Big),
+  \qquad
+  \hat z=\frac{z}{H}.
 \end{equation}
-where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
-$\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/(\rho_j U_{\mathrm{out}}^2)$ (so that
-$C_p,C_s$ are dimensionless). If one prefers a single effective term,
-set $C_p=0$ and rename $C_s\to C_t$. When using the composite form, $C_t$ is omitted and replaced by $(C_p,C_s)$ as separate
-dimensionless sealing coefficients.
+Here $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$, and in this study we set $H=h$
+for consistency with the gap height.  The pressure distribution
+$\hat p_{\mathrm{edge}}(\hat z)$ represents the momentum-based
+sealing effect of the air curtain according to
+Eq.~\eqref{eq:p_edge_momentum}.
 
 Natural velocity scales are
 \begin{equation}
   U_r^0=\frac{\kappa_r}{\mu}\,\frac{p_c}{R_{\mathrm{tot}}},\qquad
   U_z^0=\frac{\kappa_z}{\mu}\,\frac{p_c}{h},\qquad
-  S=\frac{U_z^0}{U_r^0}=\frac{\alpha_z}{\alpha_r}\frac{R_{\mathrm{tot}}}{h}.
+  S=\frac{U_z^0}{U_r^0}
+  =\frac{\alpha_z}{\alpha_r}\,\frac{R_{\mathrm{tot}}}{h}.
 \end{equation}
-The dimensionless velocities for plotting are
+The dimensionless velocities used for plotting are
 \begin{equation}
   \hat u=-\partial_{\hat r}\hat p,\qquad
   \hat w=-\partial_{\hat z}\hat p,\qquad
@@ -332,6 +308,10 @@ coefficients $(C_p,C_s)$ and mild shape exponents $(m,n)$.
 \paragraph{On the choice of $D_{m,\min}$.}
 We take $D_{m,\min}$ from air-curtain literature (order $10^{-1}$) as a design parameter; in absence of calibration, $D_{m,\min}=0.2$ provides a conservative default. 
 Sensitivity to this parameter is reported without altering the solver or figures.
+
+\paragraph{On the choice of $D_{m,\min}$.}
+We adopt $D_{m,\min}=0.2$ as conservative default, consistent with air-curtain literature (typical range $0.1$--$0.3$). The parameter may be refined by CFD or experimental calibration.
+
 \section{Nomenclature}
 \begin{tabular}{@{}ll@{}}
 \toprule
