@@ -1,36 +1,35 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hover Disc — Core Solver + Shooting + Mass/Power (aligned with LaTeX)
-======================================================================
+Hover Disc — Core Solver + Shooting + Curtain Model (aligned with paper.tex)
+=============================================================================
 
-What’s new vs. previous version:
-1) Rim pressure profile now decays with height:  Φ(ζ) = (1-ζ)^m  (m ≥ 1).
-2) Shooting loop adjusts curtain intensity (via Δp_edge ↔ U_out) to enforce
-   the target mean cushion pressure  p̄ = p_c = W/(π R_tot^2).
-3) Leakage model (film vs orifice) to estimate ṁ_loss, plus flows of
-   the outer curtain and inner make-up, and pneumatic power figures.
-4) Parameters/naming aligned with the TeX (lam→m; add β, C_d, thresholds).
-5) Same non-dimensional plots saved to ../figs for LaTeX inclusion.
+Model highlights aligned with LaTeX:
+1) Core PDE (low-Mach, axisymmetric, Stokes–Darcy closure):
+   (1/r) ∂r ( r ρ κ_r ∂r p ) + ∂z ( ρ κ_z ∂z p ) = 0,   ρ = p/(R_g T).
+   κ_r = α_r h^2, κ_z = α_z h^2.  BCs: ∂r p|_{r=0}=0, ∂z p|_{z=0,h}=0, p|_{r=R^-}=p_edge(z).
 
-PDE model (core domain: r∈[0,R_minus], z∈[0,h]):
-    (1/r) ∂r ( r ρ k_r ∂r p ) + ∂z ( ρ k_z ∂z p ) = 0,  with  ρ = p/(Rg T).
-BCs:
-    ∂p/∂r = 0 at r=0 ;  ∂p/∂z = 0 at z=0,h ;  p(R_minus,z) = p_edge(z).
-Rim pressure (curtain-imposed):
-    p_edge(z) = p0 + Δp_edge * Φ(z/h),   Φ(ζ) = (1-ζ)^m.
-Curtain link:
-    Δp_edge = C_t * (ρ_j U_out^2 b) / h_eff   ⇔   U_out = sqrt( Δp_edge h_eff / (C_t ρ_j b) ).
+2) Rim pressure (composite static + sealing momentum, Eq. p_edge_momentum in paper.tex):
+   Let ζ = z/H with H ≡ h_eff (effective curtain height).
+   b(z) = b0 * (1 + s ζ)        # jet thickens with ζ (spreading parameter s ~ 0.06–0.09)
+   U(z) = U0 * b0 / b(z)        # mass conservation per unit circumference (2D slot jet)
+   p_edge(z) = p0
+              + Δp_static * (1 - ζ)^n
+              + min(ΔP_cap, ρ_j U(z)^2 b(z) / (H * Dm_min)) * ζ^m
 
-Non-dimensionalization for plots (as in paper):
-    p̂ = (p - p0)/p_c,  with  p_c = W/(π R_tot^2);
-    û = -∂_{r̂} p̂,  ŵ = -∂_{ẑ} p̂,  S = (α_z/α_r) (R_tot/h).
+   - Δp_static = C_p * p_c encodes static build-up from turning curtain near floor.
+   - The momentum/sealing term is capped by ΔP_cap (optional), as in the text.
 
-Outputs (printed):
-    - Shooting summary and error
-    - Regime for leakage (film/orifice)
-    - ṁ_loss, ṁ_out, ṁ_in, U_out (final), Δp_edge (final)
-    - P_out, P_in (pneumatic power)
+3) Shooting loop adjusts U0 (=U_out) to enforce target mean cushion pressure p̄ ≈ p_c = W/(π R_tot^2).
+
+4) Leakage model (film vs. orifice) and pneumatic powers identical in spirit to the paper.
+
+Outputs:
+  - Shooting history and final U_out
+  - Leakage regime and flows
+  - Curtain outflow, make-up inflow, pneumatic powers
+  - Non-dimensional plots saved under FIGDIR for LaTeX
 """
 
 from dataclasses import dataclass
@@ -39,52 +38,55 @@ import matplotlib.pyplot as plt
 import os
 from typing import Tuple, Dict
 
-
 # ---------------------------- Parameters ----------------------------
 @dataclass
 class Params:
     # Geometry
     R_tot: float = 0.50       # [m] total radius
-    w: float = 0.05           # [m] leakage ring width (radial gap outside core)
+    w: float = 0.05           # [m] leakage ring width; R^- = R_tot - w
     h: float = 0.20           # [m] hover height
     # Payload / ambient
     W: float = 400.0          # [N] payload
-    p0: float = 101325.0      # [Pa] ambient pressure
-    T_inf: float = 293.0      # [K] (uniform here)
+    p0: float = 101325.0      # [Pa] ambient
+    T_inf: float = 293.0      # [K]
     # Fluid properties
     mu: float = 1.85e-5       # [Pa s]
     Rg: float = 287.0         # [J/(kg K)]
-    # Curtain (turned jet → rim pressure)
-    b: float = 0.003          # [m] slot thickness
-    h_eff: float = 0.010      # [m] effective sealing height
-    Ct: float = 1.0           # [-] curtain factor
-    m: float = 1.2            # [-] profile exponent in Φ(ζ)=(1-ζ)^m  (was lam)
+    # Curtain / rim pressure parameters
+    b: float = 0.003          # [m] slot thickness at injection b0
+    h_eff: float = 0.010      # [m] effective curtain height H
     rho_j: float = 1.20       # [kg/m^3] jet density
-    U_out: float = 40.0       # [m/s] initial guess for jet speed
+    U_out: float = 40.0       # [m/s] initial guess for U0
+    # Rim pressure model coefficients (from tex)
+    m: float = 1.2            # [-] exponent for sealing weight ζ^m
+    n_exp: float = 2.0        # [-] exponent for static build-up (1-ζ)^n
+    C_p: float = 0.15         # [-] static-pressure coefficient (O(1e-1))
+    Dm_min: float = 6.0       # [-] minimum deflection modulus for sealing
+    s_spread: float = 0.07    # [-] jet spreading parameter s (≈0.06–0.09)
+    DeltaP_cap: float = 5e5   # [Pa] cap for momentum term (set large to disable)
     # Stokes–Darcy closure
-    alpha_r: float = 0.12     # [-] k_r = α_r h^2
-    alpha_z: float = 0.05     # [-] k_z = α_z h^2
+    alpha_r: float = 0.12     # [-] κ_r = α_r h^2
+    alpha_z: float = 0.05     # [-] κ_z = α_z h^2
     # Leakage / power model
     beta: float = 0.15        # [-] fraction of curtain recirculated into cushion
     C_d: float = 0.62         # [-] discharge coefficient (orifice regime)
-    Re_h_thr: float = 120.0   # [-] threshold for switching film→orifice
-    eta_in: float = 1.0       # [-] blower efficiency (inner) if converting to shaft power
+    Re_h_thr: float = 120.0   # [-] film→orifice threshold
+    eta_in: float = 1.0       # [-] blower efficiency (inner)
     eta_out: float = 1.0      # [-] blower efficiency (outer)
     # Numerical grid
     Nr: int = 180
     Nz: int = 90
-    # Solver (elliptic)
+    # Elliptic solver
     max_iter: int = 6000
-    tol_rel: float = 1e-4     # relative to p_c (for elliptic fix-point)
+    tol_rel: float = 1e-4     # relative to p_c
     omega: float = 1.6        # SOR relaxation
-    # Shooting
+    # Shooting on U_out
     shoot_max_iter: int = 25
-    shoot_tol: float = 5e-3   # relative on p_c (|p̄ - p_c| <= shoot_tol * p_c)
-    shoot_gain: float = 0.6   # proportional gain updating Δp_edge
+    shoot_tol: float = 5e-3   # |p̄ - p_c| <= shoot_tol * p_c
+    shoot_gain: float = 0.6   # proportional gain on U_out
     # IO
     SAVEFIG: int = 1
-    FIGDIR: str = "../figs"   # keep linkage with LaTeX
-
+    FIGDIR: str = "../figs"
 
 # ---------------------------- Helpers ----------------------------
 def ensure_figdir(path):
@@ -93,43 +95,39 @@ def ensure_figdir(path):
     except Exception:
         pass
 
-
-def phi_down(z: np.ndarray, h: float, m: float) -> np.ndarray:
-    """Φ(z/h) = (1 - z/h)^m clipped in [0,1]. Decays with z; larger near the floor."""
-    zhat = np.clip(z / max(h, 1e-12), 0.0, 1.0)
-    return (1.0 - zhat)**m
-
-
 def rho_of(P: np.ndarray, Rg: float, T: float) -> np.ndarray:
-    """Ideal gas with uniform T (consistent with TeX simplification)."""
     return P / (Rg * T)
 
+def phi_static(z: np.ndarray, H: float, n_exp: float) -> np.ndarray:
+    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
+    return (1.0 - zhat) ** n_exp
+
+def phi_seal(z: np.ndarray, H: float, m: float) -> np.ndarray:
+    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
+    return zhat ** m
+
+def jet_profile(U0: float, b0: float, z: np.ndarray, H: float, s: float) -> Tuple[np.ndarray, np.ndarray]:
+    """Simple spreading: b(z)=b0*(1+s*ζ), U(z)=U0*b0/b(z)."""
+    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
+    b_z = b0 * (1.0 + s * zhat)
+    U_z = U0 * (b0 / b_z)
+    return U_z, b_z
 
 def average_cushion_pressure(P: np.ndarray, p0: float,
                              r: np.ndarray, z: np.ndarray,
                              R_tot: float) -> float:
-    """
-    Compute areal average of overpressure over the *whole disc area* πR_tot^2,
-    using the z-averaged pressure of the core solution up to r=R_minus, and
-    assuming the (thin) rim contributes with its boundary value. Here we use the
-    resolved core only (r ≤ R_minus) and renormalize by π R_tot^2 as in the TeX.
-    """
-    # z-average inside the core
-    p_bar_z = np.mean(P, axis=0)  # shape (Nr,)
-    # radial integral over core (0..R_minus)
+    p_bar_z = np.mean(P, axis=0)  # (Nr,)
     integrand = (p_bar_z - p0) * 2.0 * np.pi * r
     core_area = np.pi * (r[-1]**2)
     avg_over_core = np.trapezoid(integrand, r) / max(core_area, 1e-16)
-    # Renormalize to total disc area (π R_tot^2)
     return avg_over_core * (core_area / (np.pi * R_tot**2))
 
-
 # ---------------------------- Solver ----------------------------
-def solve_core_once(pars: Params, Delta_p_edge: float
+def solve_core_once(pars: Params, U0: float
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                np.ndarray, np.ndarray, np.ndarray, float, float,
                                Dict[str, float]]:
-    """Single elliptic solve with given Δp_edge; returns fields and diagnostics."""
+    """Single elliptic solve with given U0; returns fields and diagnostics."""
     R_minus = pars.R_tot - pars.w
 
     # References
@@ -140,16 +138,25 @@ def solve_core_once(pars: Params, Delta_p_edge: float
     kr = pars.alpha_r * pars.h**2
     kz = pars.alpha_z * pars.h**2
 
-    # Grid (dimensional)
+    # Grid
     r = np.linspace(0.0, R_minus, pars.Nr)
     z = np.linspace(0.0, pars.h, pars.Nz)
     dr = r[1]-r[0] if pars.Nr > 1 else 1.0
     dz = z[1]-z[0] if pars.Nz > 1 else 1.0
 
-    # Rim pressure profile p_edge(z) = p0 + Δp_edge * Φ(z/h)
-    p_edge = pars.p0 + Delta_p_edge * phi_down(z, pars.h, pars.m)  # (Nz,)
+    # Rim pressure p_edge(z) per paper.tex
+    U_z, b_z = jet_profile(U0, pars.b, z, pars.h_eff, pars.s_spread)
+    zhat_H = np.clip(z / max(pars.h_eff, 1e-12), 0.0, 1.0)
+    # static part
+    Delta_p_static = pars.C_p * p_c
+    # sealing momentum-limited part
+    momentum_term = (pars.rho_j * (U_z**2) * b_z) / max(pars.h_eff * max(pars.Dm_min, 1e-12), 1e-12)
+    Delta_p_seal_z = np.minimum(pars.DeltaP_cap, momentum_term)
+    p_edge = (pars.p0
+              + Delta_p_static * phi_static(z, pars.h_eff, pars.n_exp)
+              + Delta_p_seal_z * phi_seal(z, pars.h_eff, pars.m))
 
-    # Initial guess: radial interpolation from center to rim (quadratic in r)
+    # Initial guess: quadratic radial interpolation
     P = np.zeros((pars.Nz, pars.Nr))
     r_safe = max(R_minus, 1e-12)
     rr = (r / r_safe)**2
@@ -157,13 +164,10 @@ def solve_core_once(pars: Params, Delta_p_edge: float
         P[i, :] = p_center - (p_center - p_edge[i]) * rr
 
     def apply_bc(Pf):
-        # r = R_minus: Dirichlet
-        Pf[:, -1] = p_edge[:]
-        # r = 0: Neumann (mirror)
-        Pf[:, 0] = Pf[:, 1]
-        # z = 0, z = h: Neumann (mirror)
-        Pf[0, :]  = Pf[1, :]
-        Pf[-1, :] = Pf[-2, :]
+        Pf[:, -1] = p_edge[:]         # r = R^-
+        Pf[:, 0]  = Pf[:, 1]          # r = 0 symmetry
+        Pf[0, :]  = Pf[1, :]          # z = 0 Neumann
+        Pf[-1, :] = Pf[-2, :]         # z = h Neumann
         return Pf
 
     P = apply_bc(P)
@@ -175,11 +179,10 @@ def solve_core_once(pars: Params, Delta_p_edge: float
         P_old = P.copy()
         rho = rho_of(P, pars.Rg, T)
 
-        # SOR Gauss–Seidel
+        # SOR-Gauss–Seidel
         for i in range(1, pars.Nz-1):
             for j in range(1, pars.Nr-1):
                 rj = r[j] if r[j] > 1e-12 else 0.5*dr
-                # ρ at faces (arithmetic mean)
                 rho_jp = 0.5*(rho[i, j] + rho[i, j+1])
                 rho_jm = 0.5*(rho[i, j] + rho[i, j-1])
                 rho_ip = 0.5*(rho[i+1, j] + rho[i, j])
@@ -191,7 +194,7 @@ def solve_core_once(pars: Params, Delta_p_edge: float
                 Az_m = rho_im * kz / (dz**2)
 
                 denom = (Ar_p + Ar_m) / rj + (Az_p + Az_m)
-                rhs = (Ar_p * P[i, j+1] + Ar_m * P[i, j-1]) / rj                     + (Az_p * P[i+1, j] + Az_m * P[i-1, j])
+                rhs = (Ar_p * P[i, j+1] + Ar_m * P[i, j-1]) / rj + (Az_p * P[i+1, j] + Az_m * P[i-1, j])
 
                 P_new = rhs / (denom + 1e-30)
                 P[i, j] = (1 - pars.omega) * P[i, j] + pars.omega * P_new
@@ -216,7 +219,6 @@ def solve_core_once(pars: Params, Delta_p_edge: float
     z_hat = z / pars.h
     R_hat, Z_hat = np.meshgrid(r_hat, z_hat, indexing='xy')
 
-    p_c = pars.W / (np.pi * pars.R_tot**2)
     p_hat = (P - pars.p0) / p_c
     dp_hat_drhat = (pars.R_tot / p_c) * dPdr
     dp_hat_dzhat = (pars.h / p_c) * dPdz
@@ -224,86 +226,67 @@ def solve_core_once(pars: Params, Delta_p_edge: float
     w_hat = - dp_hat_dzhat
     S = (pars.alpha_z / pars.alpha_r) * (pars.R_tot / pars.h)
 
-    # Diagnostics needed for shooting and leakage
+    # Diagnostics for shooting & leakage
     pbar = average_cushion_pressure(P, pars.p0, r, z, pars.R_tot)
-    # Δp_leak estimated at rim from the solution (z-average on last column)
-    Delta_p_leak = float(np.mean(P[:, -1] - pars.p0))
+    Delta_p_leak = float(np.mean(P[:, -1] - pars.p0))  # z-avg at rim
 
     diag = {
         "pbar": float(pbar),
         "Delta_p_leak": float(Delta_p_leak),
         "R_minus": float(R_minus),
         "p_c": float(p_c),
+        "U_profile_mean": float(np.mean(U_z)),
     }
 
     return (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, R_minus/pars.R_tot, diag)
 
-
 def solve_core_with_shooting(pars: Params):
-    """Outer loop to adjust curtain intensity until p̄ ≈ p_c."""
+    """Adjust U_out so that p̄ ≈ p_c."""
     p_c = pars.W / (np.pi * pars.R_tot**2)
-    # Start from U_out guess → Δp_edge
-    Delta_p_edge = pars.Ct * (pars.rho_j * pars.U_out**2 * pars.b) / pars.h_eff
-
+    U0 = pars.U_out
     history = []
     final_fields = None
+
     for it in range(1, pars.shoot_max_iter+1):
-        results = solve_core_once(pars, Delta_p_edge)
+        results = solve_core_once(pars, U0)
         (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag) = results
         pbar = diag["pbar"]
         err = pbar - p_c
         rel_err = err / max(p_c, 1e-16)
-        history.append((it, Delta_p_edge, pbar, rel_err))
+        history.append((it, U0, pbar, rel_err))
 
-        # Stop?
         if abs(rel_err) <= pars.shoot_tol:
             final_fields = results
             break
 
-        # Proportional update on Δp_edge (bounded positive)
-        Delta_p_edge = max(1e-1, Delta_p_edge * (1.0 - pars.shoot_gain * rel_err))
+        # Proportional gain on U0 (keep positive)
+        U0 = max(0.5, U0 * (1.0 - pars.shoot_gain * rel_err))
+        final_fields = results
 
-        final_fields = results  # keep latest
-
-    # Map back to U_out from final Δp_edge
-    Delta_p_edge_final = history[-1][1]
-    U_out_final = np.sqrt(max(Delta_p_edge_final, 0.0) * pars.h_eff / (pars.Ct * pars.rho_j * pars.b))
-
+    # Final diagnostics based on U0
+    U_out_final = float(history[-1][1])
     return final_fields, {
         "history": history,
-        "Delta_p_edge": float(Delta_p_edge_final),
-        "U_out_final": float(U_out_final),
+        "U_out_final": U_out_final,
     }
-
 
 # ---------------------------- Leakage / Flows / Power ----------------------------
 def leakage_and_power(pars: Params, diag: Dict[str, float]) -> Dict[str, float]:
-    """
-    Estimate leakage mass flow and related power numbers.
-    Uses Δp_leak from the solution (z-avg at rim). Selects regime by Re_h.
-    """
     Delta_p_leak = diag["Delta_p_leak"]
     R_minus = diag["R_minus"]
-    # Gas density in cushion (use mean pressure p0 + p_c at T_inf)
     rho_c = (pars.p0 + diag["p_c"]) / (pars.Rg * pars.T_inf)
 
-    # Geometric areas
-    A_leak = 2.0 * np.pi * R_minus * pars.h  # side annulus opening
-    # ---- Film (laminar slot) estimate ----
-    # volumetric flow per unit length along circumference q' ≈ h^3/(12 μ w) Δp
-    qprime = (pars.h**3 / (12.0 * pars.mu * max(pars.w, 1e-12))) * Delta_p_leak  # [m^2/s per m] ≡ [m^3/(s·m)]
-    Q_film = qprime * (2.0 * np.pi * R_minus)   # [m^3/s]
+    A_leak = 2.0 * np.pi * R_minus * pars.h
+    qprime = (pars.h**3 / (12.0 * pars.mu * max(pars.w, 1e-12))) * Delta_p_leak
+    Q_film = qprime * (2.0 * np.pi * R_minus)
     mdot_film = rho_c * Q_film
 
-    # Provisional velocity and Re_h
     U_h = Q_film / max(A_leak, 1e-16)
     Re_h = rho_c * U_h * pars.h / pars.mu
 
-    # ---- Orifice (inertial) estimate ----
     Q_orif = pars.C_d * A_leak * np.sqrt(max(2.0 * Delta_p_leak / max(rho_c, 1e-16), 0.0))
     mdot_orif = rho_c * Q_orif
 
-    # Select regime
     if Re_h >= pars.Re_h_thr:
         regime = "orifice"
         mdot_loss = mdot_orif
@@ -323,21 +306,23 @@ def leakage_and_power(pars: Params, diag: Dict[str, float]) -> Dict[str, float]:
         "regime": regime,
     }
 
-
 def curtain_and_powers(pars: Params, ctrl: Dict[str, float], leak: Dict[str, float]) -> Dict[str, float]:
-    """Curtain outflow, make-up inflow, and pneumatic power figures."""
     U_out = ctrl["U_out_final"]
-    Delta_p_edge = ctrl["Delta_p_edge"]
-    # Curtain mass flow
+    # Curtain mass flow (annular slot): ṁ_out = ρ_j U_out (2π R_tot b0)
     mdot_out = pars.rho_j * U_out * (2.0 * np.pi * pars.R_tot * pars.b)
-    # Recirculation fraction
+    # Recirculated fraction β reduces make-up flow demand
     mdot_in = leak["mdot_loss"] - pars.beta * mdot_out
+    mdot_in = float(mdot_in)
 
-    # Pneumatic powers (volumetric flow × Δp); convert from mdot by dividing by density
-    P_out = (mdot_out / max(pars.rho_j, 1e-16)) * Delta_p_edge
-    P_in = (mdot_in / max(leak["rho_c"], 1e-16)) * ( (pars.W / (np.pi * pars.R_tot**2)) )
+    # Pneumatic powers: P = Q * Δp, with Q = ṁ/ρ
+    # Use Δp ≈ p_c for make-up and an effective Δp at the rim for the outer jet.
+    P_out = (mdot_out / max(pars.rho_j, 1e-16)) * leak["mdot_loss"] * 0.0  # placeholder in case needed
+    # For outer jet power, better estimate via momentum flux per unit circumf. ~ ρ U^3 b * 2πR
+    P_out = (pars.rho_j * (U_out**3) * pars.b) * (2.0 * np.pi * pars.R_tot)  # aerodynamic power in jet
+    rho_c = leak["rho_c"]
+    p_c = ctrl.get("p_c", (pars.W / (np.pi * pars.R_tot**2)))
+    P_in = ( (mdot_in / max(rho_c, 1e-16)) * p_c )
 
-    # Shaft power (if η<1)
     P_out_shaft = P_out / max(pars.eta_out, 1e-16)
     P_in_shaft  = P_in  / max(pars.eta_in,  1e-16)
 
@@ -349,14 +334,11 @@ def curtain_and_powers(pars: Params, ctrl: Dict[str, float], leak: Dict[str, flo
         "P_out_shaft": float(P_out_shaft),
         "P_in_shaft": float(P_in_shaft),
         "U_out_final": float(U_out),
-        "Delta_p_edge": float(Delta_p_edge),
     }
-
 
 # ---------------------------- Plots ----------------------------
 def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat):
     ensure_figdir(pars.FIGDIR)
-    # Quiver downsample
     Nr, Nz = R_hat.shape[1], Z_hat.shape[0]
     step_r = max(1, Nr // 30)
     step_z = max(1, Nz // 15)
@@ -365,14 +347,13 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
     uq = u_hat[::step_z, ::step_r]
     wq = w_hat[::step_z, ::step_r]
 
-    # Isotropic magnitude for cmap_speed.png
     Viso = np.sqrt(u_hat**2 + (S * w_hat)**2)
 
-    # Utility to draw vertical line at r̂ = Rminus_hat
     def add_Rminus_line():
+        import matplotlib.pyplot as plt
         plt.plot([Rminus_hat, Rminus_hat], [0.0, 1.0])
 
-    # 1) Quiver of (û, S ŵ)
+    # Quiver (û, S ŵ)
     plt.figure(figsize=(7, 4.5))
     plt.quiver(Rq, Zq, uq, S*wq, angles='xy', scale_units='xy', scale=None)
     add_Rminus_line()
@@ -383,7 +364,7 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
     if pars.SAVEFIG == 1:
         plt.savefig(os.path.join(pars.FIGDIR, 'quiver_velocity.png'), dpi=180)
 
-    # 2) |V̂_iso|
+    # |V̂_iso|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(R_hat, Z_hat, Viso, shading='auto')
     add_Rminus_line()
@@ -395,7 +376,7 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
     if pars.SAVEFIG == 1:
         plt.savefig(os.path.join(pars.FIGDIR, 'cmap_speed.png'), dpi=180)
 
-    # 3) |û|
+    # |û|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(R_hat, Z_hat, np.abs(u_hat), shading='auto')
     add_Rminus_line()
@@ -407,7 +388,7 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
     if pars.SAVEFIG == 1:
         plt.savefig(os.path.join(pars.FIGDIR, 'cmap_ur.png'), dpi=180)
 
-    # 4) |ŵ|
+    # |ŵ|
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(R_hat, Z_hat, np.abs(w_hat), shading='auto')
     add_Rminus_line()
@@ -419,7 +400,7 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
     if pars.SAVEFIG == 1:
         plt.savefig(os.path.join(pars.FIGDIR, 'cmap_uz.png'), dpi=180)
 
-    # 5) p̂
+    # p̂
     plt.figure(figsize=(7, 4.5))
     plt.pcolormesh(R_hat, Z_hat, p_hat, shading='auto')
     add_Rminus_line()
@@ -433,15 +414,13 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
 
     plt.show()
 
-
 # ---------------------------- Main ----------------------------
 def print_report(pars: Params, shoot_ctrl: dict, leak: dict, flows: dict):
     print(" Shooting (p̄ → p_c) ===")
     hist = shoot_ctrl["history"]
-    for it, Dp, pbar, rel in hist:
-        print(f"  it {it:2d}: Δp_edge={Dp:10.3f} Pa | p̄={pbar:9.3f} Pa | rel_err={rel:+8.4f}")
+    for it, U0, pbar, rel in hist:
+        print(f"  it {it:2d}: U_out={U0:8.3f} m/s | p̄={pbar:9.3f} Pa | rel_err={rel:+8.4f}")
     print(f"  Final U_out = {shoot_ctrl['U_out_final']:.3f} m/s")
-    print(f"  Final Δp_edge = {shoot_ctrl['Delta_p_edge']:.3f} Pa")
 
     print("=== Leakage Regime ===")
     print(f"  regime = {leak['regime']} | Re_h = {leak['Re_h']:.1f}")
@@ -450,14 +429,13 @@ def print_report(pars: Params, shoot_ctrl: dict, leak: dict, flows: dict):
     print("=== Flows & Power ===")
     print(f"  ṁ_out = {flows['mdot_out']:.6f} kg/s")
     print(f"  ṁ_in  = {flows['mdot_in']:.6f} kg/s  (β={pars.beta})")
-    print(f"  P_out (pneum.)  = {flows['P_out']:.2f} W  | shaft ≈ {flows['P_out_shaft']:.2f} W (η_out={pars.eta_out})")
-    print(f"  P_in  (pneum.)  = {flows['P_in']:.2f} W  | shaft ≈ {flows['P_in_shaft']:.2f} W (η_in={pars.eta_in})")
-
+    print(f"  P_out (jet power)  = {flows['P_out']:.2f} W  | shaft ≈ {flows['P_out_shaft']:.2f} W (η_out={pars.eta_out})")
+    print(f"  P_in  (pneum.)     = {flows['P_in']:.2f} W  | shaft ≈ {flows['P_in_shaft']:.2f} W (η_in={pars.eta_in})")
 
 if __name__ == '__main__':
     pars = Params()
 
-    # Elliptic core with shooting on Δp_edge via U_out
+    # Solve core with shooting on U_out
     (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag), shoot_ctrl = solve_core_with_shooting(pars)
 
     # Leakage model and power/flows
