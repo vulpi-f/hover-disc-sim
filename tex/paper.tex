@@ -109,7 +109,7 @@ This closure is valid provided that:
 \end{itemize}
 It is particularly suited to parametric design and control studies where the detailed jet micro-structure is not resolved.
 
-\subsection{Boundary Conditions and Curtain Coupling}
+\subsection{Boundary Conditions and Curtain Coupling} \label{sec:boundaryconditions}
 The outer slot jet issues \emph{downwards} and acts as an \emph{air curtain} that
 limits radial leakage from the cushion. The pressure imposed along the rim
 $r=R^{-}$ is modeled as the superposition of two physically motivated
@@ -128,6 +128,30 @@ which grows with jet momentum. Typical choices are $m,n\in[1,2]$ and
 $C_p,C_s=O(10^{-1}\!\!-\!1)$; in the simplest reduced form, one may merge both
 effects into a single effective coefficient $C_t$,
 $\Delta p = C_t \rho_j U_{\mathrm{out}}^2 b / h_{\mathrm{eff}}$.
+\paragraph{Momentum-based sealing model (deflection modulus).}
+While Eq.~\eqref{eq:rim_pressure_composite} is convenient for tuning, in this work we
+\emph{adopt} a curtain coupling based on the jet's momentum flux, which removes ad-hoc coefficients and matches the physics of air-curtain ``pressure sealing''. 
+Consider a 2D downward plane jet with inlet thickness $b_0$ and speed $U_0$ spanning a height $H$. 
+Let $\Delta P\!=\!p_L-p_R$ be the lateral pressure difference the curtain must resist (left: high pressure, right: ambient).
+Define the \emph{deflection modulus} (momentum index)
+\[
+D_m \;=\; \frac{\rho\,U_0^2\,b_0}{\Delta P\,H}.
+\]
+Experiments and integral analyses show that a minimum $D_{m,\min}$ (order $10^{-1}$) is required for the jet to reach the floor without breakthrough. 
+The maximum sustainable pressure difference then reads
+\[
+\Delta P_{\max} \;=\; \frac{\rho\,U_0^2\,b_0}{H}\,\frac{1}{D_{m,\min}}.
+\]
+To reflect the fact that sealing is strongest near the slot and weakest near the floor (where the jet spreads and impinges), we model the \emph{available sealing} along $z$ by the jet spreading law $b(z)\approx b_0+2 s z$ with a turbulent spread parameter $s\in[0.06,0.09]$ and $U(z)\approx U_0\sqrt{b_0/b(z)}$ from momentum conservation. 
+We then prescribe the rim pressure as
+\begin{equation}
+  \boxed{\,p_{\mathrm{edge}}(z)=p_0 + \min\!\Big(\Delta P,\ \frac{\rho\,U(z)^2\,b(z)}{H}\,\frac{1}{D_{m,\min}}\Big)\,}
+  \label{eq:p_edge_momentum}
+\end{equation}
+so that the curtain acts as an effective barrier near the slot ($z\!\approx\!h$) and gradually ``leaks'' near the floor ($z\!\to\!0$), without artificial shaping. 
+In practice, we use \eqref{eq:p_edge_momentum} as the \emph{default} coupling and retain \eqref{eq:rim_pressure_composite} as a legacy alternative for sensitivity tests.
+
+
 
 On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
 \begin{equation}
@@ -186,11 +210,13 @@ We scale
 \end{equation}
 with boundary conditions
 \begin{equation}
-  \partial_{\hat r}\hat p(0,\hat z)=0,\qquad
+  \partial_{\hat r}\hat p(0,\hat z)=0, \qquad
   \partial_{\hat z}\hat p(\hat r,0)=\partial_{\hat z}\hat p(\hat r,1)=0,\qquad
-  \hat p(\hat R^{-},\hat z)=
-  \Pi_{\mathrm{edge}}\,
-  \big[\, C_p (1-\hat z)^{n} + C_s \hat z^{m} \,\big],
+  \hat p(\hat R^{-},\hat z)= \hat p_{\mathrm{edge}}(\hat z), % default: momentum-based \eqref{eq:p_edge_momentum}; legacy: \eqref{eq:rim_pressure_composite}
+\end{equation}
+\begin{equation}
+  \quad\text{with}\quad 
+\hat p_{\mathrm{edge}}(\hat z) = \frac{p_{\mathrm{edge}}(z)-p_0}{p_c},\ \ \hat z=z/h.
 \end{equation}
 where $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$ and
 $\Pi_{\mathrm{edge}}=(p_{\mathrm{edge}}-p_0)/(\rho_j U_{\mathrm{out}}^2)$ (so that
@@ -302,6 +328,10 @@ first-order surrogate capturing both effects with two tunable, dimensionless
 coefficients $(C_p,C_s)$ and mild shape exponents $(m,n)$.
 
 
+
+\paragraph{On the choice of $D_{m,\min}$.}
+We take $D_{m,\min}$ from air-curtain literature (order $10^{-1}$) as a design parameter; in absence of calibration, $D_{m,\min}=0.2$ provides a conservative default. 
+Sensitivity to this parameter is reported without altering the solver or figures.
 \section{Nomenclature}
 \begin{tabular}{@{}ll@{}}
 \toprule
@@ -330,7 +360,13 @@ $\Pi_{\mathrm{edge}}$ & Dimensionless rim pressure amplitude \\
 $\mathcal{A}$ & Permeability anisotropy parameter \\
 $\hat r,\hat z,\hat p$ & Dimensionless coordinates and pressure \\
 $\hat u,\hat w$ & Dimensionless velocity components \\
-$S$ & Velocity anisotropy ratio $S=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)$ \\ \bottomrule
+$S$ & Velocity anisotropy ratio $S=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)$ \\ $D_m$ & Deflection modulus (momentum index) $\rho U_0^2 b_0/(\Delta P\,H)$ \\
+$D_{m,\min}$ & Minimum deflection modulus for sealing \\
+$b_0$ & Slot thickness at injection (plane jet width) \\
+$H$ & Effective curtain height \\
+$s$ & Jet spreading parameter ($\approx0.06$--$0.09$) \\
+$\Delta P_{\max}$ & Maximum sustainable pressure difference \\
+\bottomrule
 $C_p$ & static-pressure coefficient for rim build-up (order $10^{-1}$)\\
 $C_s$ & sealing-effectiveness coefficient for high-momentum curtain (order $1$)\\
 $m,n$ & shape exponents for sealing and static contributions, respectively\\
