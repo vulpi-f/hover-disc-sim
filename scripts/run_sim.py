@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -192,8 +191,7 @@ def solve_core_once(pars: Params, Delta_p_edge: float
                 Az_m = rho_im * kz / (dz**2)
 
                 denom = (Ar_p + Ar_m) / rj + (Az_p + Az_m)
-                rhs = (Ar_p * P[i, j+1] + Ar_m * P[i, j-1]) / rj \
-                    + (Az_p * P[i+1, j] + Az_m * P[i-1, j])
+                rhs = (Ar_p * P[i, j+1] + Ar_m * P[i, j-1]) / rj                     + (Az_p * P[i+1, j] + Az_m * P[i-1, j])
 
                 P_new = rhs / (denom + 1e-30)
                 P[i, j] = (1 - pars.omega) * P[i, j] + pars.omega * P_new
@@ -438,18 +436,18 @@ def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S,
 
 # ---------------------------- Main ----------------------------
 def print_report(pars: Params, shoot_ctrl: dict, leak: dict, flows: dict):
-    print("\n=== Shooting (p̄ → p_c) ===")
+    print(" Shooting (p̄ → p_c) ===")
     hist = shoot_ctrl["history"]
     for it, Dp, pbar, rel in hist:
         print(f"  it {it:2d}: Δp_edge={Dp:10.3f} Pa | p̄={pbar:9.3f} Pa | rel_err={rel:+8.4f}")
     print(f"  Final U_out = {shoot_ctrl['U_out_final']:.3f} m/s")
     print(f"  Final Δp_edge = {shoot_ctrl['Delta_p_edge']:.3f} Pa")
 
-    print("\n=== Leakage Regime ===")
+    print("=== Leakage Regime ===")
     print(f"  regime = {leak['regime']} | Re_h = {leak['Re_h']:.1f}")
     print(f"  ṁ_loss = {leak['mdot_loss']:.6f} kg/s  (film: {leak['mdot_film']:.6f}, orif: {leak['mdot_orif']:.6f})")
 
-    print("\n=== Flows & Power ===")
+    print("=== Flows & Power ===")
     print(f"  ṁ_out = {flows['mdot_out']:.6f} kg/s")
     print(f"  ṁ_in  = {flows['mdot_in']:.6f} kg/s  (β={pars.beta})")
     print(f"  P_out (pneum.)  = {flows['P_out']:.2f} W  | shaft ≈ {flows['P_out_shaft']:.2f} W (η_out={pars.eta_out})")
