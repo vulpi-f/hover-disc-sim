@@ -1,10 +1,10 @@
 # Fdb version 4
-["pdflatex"] 1760965175.07945 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760965176.76046 0
-  "../figs/cmap_pressure.png" 1760965174 38195 59d7d798fe6fb34ebe43c39cf73d1156 ""
-  "../figs/cmap_speed.png" 1760965174 32113 d67feacdba76ccd703dfde58091b9e1e ""
-  "../figs/cmap_ur.png" 1760965174 30658 545c925c7a2049523337d9a1c6d6f7fa ""
-  "../figs/cmap_uz.png" 1760965174 31422 504cdf966044ab333c00030ddcdd6716 ""
-  "../figs/quiver_velocity.png" 1760965174 104762 d5700ba9b881047964484d97042f14c4 ""
+["pdflatex"] 1760969108.8695 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1760969110.63769 0
+  "../figs/cmap_pressure.png" 1760969108 45263 9e7666db2559ae924285c658e948d2e2 ""
+  "../figs/cmap_speed.png" 1760969108 40219 2f2b03d141f6228415d24200e02b8cba ""
+  "../figs/cmap_ur.png" 1760969108 41466 60e3d0a6cb7c5b7351ca97f6df2ab7ad ""
+  "../figs/cmap_uz.png" 1760969108 45847 c9f6802cc342c591e1cdabdb7e73ccbc ""
+  "../figs/quiver_velocity.png" 1760969107 144674 134d1085967fd614f688d967b9339d85 ""
   "../figs/schema_geometry.png" 1760707073 57853 a1d102eb3a35c5001169fd3cebecccd7 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1760707976 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1760440036 13321623 3fb338287053e28da04db6fc1a036b60 ""
@@ -138,8 +138,8 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1760963734 17049 61034d71db34f0a33f62edcf7d2cc666 ""
-  "paper.aux" 1760965176 5041 9b859294590893924cfc8773c5a8c972 "pdflatex"
-  "paper.out" 1760965176 2629 19339fdafa69efdf961d7b6d2c5a1ad7 "pdflatex"
+  "paper.aux" 1760969110 5041 9b859294590893924cfc8773c5a8c972 "pdflatex"
+  "paper.out" 1760969110 2629 19339fdafa69efdf961d7b6d2c5a1ad7 "pdflatex"
   "paper.tex" 1760963734 17049 61034d71db34f0a33f62edcf7d2cc666 ""
   (generated)
   "paper.aux"
