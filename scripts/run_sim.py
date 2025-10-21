@@ -23,6 +23,8 @@ from typing import Tuple, Dict
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+from matplotlib.colors import TwoSlopeNorm
+
 
 # ---------------------------- Parameters ----------------------------
 @dataclass
@@ -432,6 +434,62 @@ def make_plots(pars: Params,
     plt.tight_layout()
     if pars.SAVEFIG:
         fig3.savefig(os.path.join(pars.FIGDIR, 'cmap_pressure.png'), dpi=200)
+
+    # ---------- C O L O R M A P  (u_radiale con segno) ----------
+    figu, axu = plt.subplots(figsize=(8.4, 4.8))
+    # core: u_hat (adimensionale, con segno)
+    umax = float(np.nanmax(np.abs(u_hat))) if np.isfinite(np.nanmax(np.abs(u_hat))) else 1.0
+    umax = umax if umax > 0 else 1.0
+    m_uc = axu.pcolormesh(
+        R_hat, Z_hat, u_hat, shading='auto', cmap='coolwarm',
+        norm=TwoSlopeNorm(vmin=-umax, vcenter=0.0, vmax=umax)
+    )
+
+    # outer annulus: componente radiale del getto ≈ 0 (replicata radialmente)
+    U_r_outer = np.zeros((Z_out.shape[0], R_out.shape[1]))
+    m_uo = axu.pcolormesh(
+        R_out, Z_out, U_r_outer, shading='auto', cmap='coolwarm',
+        norm=TwoSlopeNorm(vmin=-1e-9, vcenter=0.0, vmax=1e-9), alpha=0.9
+    )
+
+    _style_axes(axu, Rminus_hat, title=r'Colormap: $\hat u$ (core) + $u_{\mathrm{outer}}\!\approx 0$ (annulus)')
+    # due colorbar separate
+    cbar_uc = figu.colorbar(m_uc, ax=axu, pad=0.02)
+    cbar_uc.set_label(r'$\hat u$ (core)')
+    cbar_uo = figu.colorbar(m_uo, ax=axu, pad=0.10)
+    cbar_uo.set_label(r'$u$ [m/s] (outer, $\approx 0$)')
+    plt.tight_layout()
+    if pars.SAVEFIG:
+        figu.savefig(os.path.join(pars.FIGDIR, 'cmap_ur.png'), dpi=200)
+
+    # ---------- C O L O R M A P  (w_assiale con segno) ----------
+    figw, axw = plt.subplots(figsize=(8.4, 4.8))
+    # core: w_hat (adimensionale, con segno)
+    wmax = float(np.nanmax(np.abs(w_hat))) if np.isfinite(np.nanmax(np.abs(w_hat))) else 1.0
+    wmax = wmax if wmax > 0 else 1.0
+    m_wc = axw.pcolormesh(
+        R_hat, Z_hat, w_hat, shading='auto', cmap='coolwarm',
+        norm=TwoSlopeNorm(vmin=-wmax, vcenter=0.0, vmax=wmax)
+    )
+
+    # outer annulus: componente assiale del getto (verso il basso) = -U_z(z), replicata radialmente
+    Wjet_field = np.tile((-U_z).reshape(-1, 1), (1, R_out.shape[1]))
+    wj_max = float(np.nanmax(np.abs(Wjet_field))) if np.isfinite(np.nanmax(np.abs(Wjet_field))) else 1.0
+    wj_max = wj_max if wj_max > 0 else 1.0
+    m_wo = axw.pcolormesh(
+        R_out, Z_out, Wjet_field, shading='auto', cmap='coolwarm',
+        norm=TwoSlopeNorm(vmin=-wj_max, vcenter=0.0, vmax=wj_max), alpha=0.9
+    )
+
+    _style_axes(axw, Rminus_hat, title=r'Colormap: $\hat w$ (core) + $w_{\mathrm{outer}}=-U_j(z)$ (annulus)')
+    # due colorbar separate
+    cbar_wc = figw.colorbar(m_wc, ax=axw, pad=0.02)
+    cbar_wc.set_label(r'$\hat w$ (core)')
+    cbar_wo = figw.colorbar(m_wo, ax=axw, pad=0.10)
+    cbar_wo.set_label(r'$w$ [m/s] (outer)')
+    plt.tight_layout()
+    if pars.SAVEFIG:
+        figw.savefig(os.path.join(pars.FIGDIR, 'cmap_uz.png'), dpi=200)
 
     plt.show()
 
