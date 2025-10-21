@@ -77,30 +77,26 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \end{tabular}
 \end{table}
 
+
 \section{Model Overview}
 \label{sec:model-overview}
 
-The cushion region ($0\le r\le R^{-},\ 0\le z\le h$) is filled with air at variable pressure, temperature, and density.
-The mean flow satisfies an anisotropic Stokes--Darcy closure:
+The cushion region ($0\le r\le R^{-},\ 0\le z\le h$) is filled with air at variable pressure and density (isothermal, low-Mach). 
+The mean flow follows an \emph{anisotropic Darcy--Brinkman} closure (reducing to Stokes--Darcy when $\mu_e\!=\!0$):
 \begin{equation}
-  u = -\frac{\kappa_r}{\mu}\,\partial_r p,\qquad
-  w = -\frac{\kappa_z}{\mu}\,\partial_z p,
+  u = -\frac{\kappa_r}{\mu}\,\partial_r p \;+\; \frac{\mu_e}{\mu}\,\nabla^2 u,
+  \qquad
+  w = -\frac{\kappa_z}{\mu}\,\partial_z p \;+\; \frac{\mu_e}{\mu}\,\nabla^2 w,
+  \label{eq:darcy_brinkman}
 \end{equation}
-with permeability coefficients $\kappa_r=\alpha_r h^2$ and $\kappa_z=\alpha_z h^2$, where $\alpha_r$ and $\alpha_z$ are empirical dimensionless parameters encoding the overall resistance of the confined air layer.
-
-The continuity and state relations read
+with permeabilities $\kappa_r=\alpha_r h^2$ and $\kappa_z=\alpha_z h^2$ and an effective viscosity $\mu_e=\beta\,\mu$ ($\beta\sim O(1)$) controlling recirculation smoothing near the rim. 
+Mass conservation and state equation read
 \begin{equation}
-  \frac{1}{r}\,\partial_r\!\left(r\rho u\right)+\partial_z(\rho w)=0,\qquad
-  p=\rho R_g T.
+  \frac{1}{r}\,\partial_r\!\left(r\rho u\right)+\partial_z(\rho w)=0,
+  \qquad
+  p=\rho R_g T_0,
 \end{equation}
-Elimination of $u,w$ gives the pressure formulation:
-\begin{equation}
-  \frac{1}{r}\partial_r(r\rho\kappa_r\partial_r p)+\partial_z(\rho\kappa_z\partial_z p)=0.
-\end{equation}
-
-
-
-
+under the isothermal assumption $T=T_0$.
 \section{Simulation Methodology}
 \label{sec:simulation-method}
 
@@ -115,24 +111,16 @@ The hover disc system is conceptually split into two interacting regions:
 The key coupling mechanism is as follows: the outer jet impinges, creating a rim pressure distribution \(p_{\rm edge}(z)\) at the boundary \(r=R^{-}\); this rim pressure acts as a boundary condition for the core pressure field. In turn, the core pressure field determines the leakage mass flux and thus affects the required outer jet flow and velocity to maintain equilibrium.
 
 \subsection*{2. Governing sub-problems}
-\paragraph{2.1 Outer jet / curtain model}  
-Given a trial outer-slot exit velocity \(U_{\rm out}\) and mass flow \(\dot m_{\rm out}\), the outer jet sub-model computes:
-\begin{itemize}
-  \item The impingement and turning losses at the ground (characterised by \(K_{\rm turn}\)) and the wall-jet initial conditions (speed \(U_c(r_t)\), thickness \(\delta_t\)).
-  \item The integral wall-jet development from the turning radius \(r_t\) out to \(r=R^{-}\). This uses mass and momentum balances:
-    \[
-      \frac{d q}{dr} = E\,U_c(r), 
-      \qquad
-      \frac{d m}{dr} = -\tfrac12\,\rho\,U_c(r)^2\,C_f(r)
-    \]
-    together with a growth law for the jet thickness \(\delta'(r)=k_e\).  
-  \item From the wall-jet profile, the rim pressure (seal effect) is derived in the form  
-    \[
-      p_{\rm edge}(z) = p_0 + \min\!\Bigg(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Bigg)
-      \]
-    for \(0\le z\le H\). Here \(H\) is the effective curtain height (in this work \(H=h\)), \(b(z)\) is the local effective slot width (or slot-equivalent width), and \(D_{m,\min}\) is the minimum deflection modulus.  
-\end{itemize}
 
+\paragraph{2.1 Outer jet / curtain model}  
+Given a trial outer-slot exit velocity \(U_{\rm out}\) and mass flow \(\dot m_{\rm out}\), the outer-jet sub-model now uses:
+\begin{itemize}
+  \item The prescribed vertical profile \(U_z(z)=U_{\mathrm{out}}\Phi(\zeta)\) with \(\Phi(1)=1\), \(\Phi(0)=0\) [Eq.~\eqref{eq:Uz_profile}], ensuring purely vertical issue at \(z=H\) and vanishing axial speed at the floor.
+  \item The impingement pedestal \(\Delta p_{\mathrm{imp}}\) and turning loss \(K_{\mathrm{turn}}\) [Eq.~\eqref{eq:delta_p_imp}], setting the near-floor static build-up.
+  \item The composite rim pressure \(p_{\mathrm{edge}}(z)\) with shape \(g(\zeta)\) [Eq.~\eqref{eq:pedestal_composite}] and cap \(p_0+\Delta P\).
+  \item Initialization of the radial wall-jet at the turning radius \(r_t\) via \((q,m)\) conditions in Eq.~\eqref{eq:walljet_init}, then integral advancement using entrainment \(E\), friction \(C_f\) and thickness growth \(\delta'(r)=k_e\).
+\end{itemize}
+The curtain conductance \(C_{\mathrm{seal}}(\zeta)\) implied by the momentum part of \(p_{\mathrm{edge}}\) is used in the Robin coupling at the rim [Eq.~\eqref{eq:robin}].
 \paragraph{2.2 Core cushion model}  
 With \(p_{\rm edge}(z)\) now available, the core model solves:
 \[
@@ -161,59 +149,35 @@ From the computed fields \(p(r,z),\,u(r,z),\,w(r,z)\), the following integrated 
   \item Lift force: \( L = \displaystyle\int_{0}^{R^{-}}\!\! (p(r,z)-p_0)\,2\pi r\,dr \approx W \).
 \end{itemize}
 
+
 \subsection*{3. Iterative coupling and convergence}
 The overall algorithm proceeds as follows:
 \begin{enumerate}
-  \item Choose an initial guess for \(U_{\rm out}\) and \(\dot m_{\rm out}\) (or equivalently the slot geometry \(b_0\), etc.).  
-  \item Solve the outer-jet model and compute \(p_{\rm edge}(z)\).  
-  \item Apply \(p_{\rm edge}(z)\) to the core model as boundary condition at \(r=R^{-}\); solve for \(p(r,z),u,w\).  
-  \item Compute \(\bar p_{\rm core}\), \(\dot m_{\rm leak}\), and lift \(L\).  
-  \item Compare \(L\) (or equivalently \(\bar p_{\rm core}\)) with the target load \(W\), and check mass balance:  
-    \[
-      \dot m_{\rm in} = \dot m_{\rm out} + \dot m_{\rm leak}.
-    \]
-  \item If the residuals exceed chosen tolerances \(\varepsilon_L,\varepsilon_m\), update \(U_{\rm out}\) (or \(b_0,\dot m_{\rm out}\)) via under-relaxation and repeat from step 2 until convergence.  
+  \item Choose an initial guess for \(U_{\rm out}\), \(\dot m_{\rm out}\) and model parameters \((K_{\mathrm{turn}},D_{m,\min},E,C_f,k_e,m,\beta)\).
+  \item Build the curtain profile \(U_z(z)=U_{\mathrm{out}}\Phi(\zeta)\) and the composite rim pressure \(p_{\mathrm{edge}}(z)\) [Eqs.~\eqref{eq:Uz_profile}--\eqref{eq:pedestal_composite}].
+  \item Compute the sealing conductance \(C_{\mathrm{seal}}(\zeta)\) and impose the Robin coupling at \(r=R^{-}\) [Eq.~\eqref{eq:robin}]; solve the core (Darcy--Brinkman) for \(p(r,z),u,w\).
+  \item Initialize and march the radial wall-jet from \(r_t\) using \((q,m)\) balances and \(\delta'(r)=k_e\) to validate the near-floor behaviour.
+  \item Update \(\bar p_{\rm core}\), \(\dot m_{\rm leak}\), and lift \(L\); enforce mass balance \(\dot m_{\rm in}=\dot m_{\rm out}+\dot m_{\rm leak}\).
+  \item Check convergence on load, mass balance \emph{and} a recirculation indicator (mean sign of \(u\) in a thin ring at \(r\lesssim R^{-}\)): if not converged, under-relax \(U_{\mathrm{out}}\) and the pedestal weight via \(m\) in \(g(\zeta)\), then repeat.
 \end{enumerate}
-Convergence is declared when:
-\[
-  \frac{|L - W|}{W} < \varepsilon_L,\quad
-  \frac{|\dot m_{\rm in} - (\dot m_{\rm out} + \dot m_{\rm leak})|}{\dot m_{\rm in}} < \varepsilon_m.
-\]
-
-\paragraph{Convergence criteria and under-relaxation.}
-The iterative solver uses the following convergence tolerances:
-\[
-  \frac{|L - W|}{W} < \varepsilon_L,
-  \qquad
-  \frac{|\dot m_{\rm in} - (\dot m_{\rm out} + \dot m_{\rm leak})|}
-       {\dot m_{\rm in}} < \varepsilon_m,
-  \qquad
-  \|\hat p_{\rm edge}^{(k)} - \hat p_{\rm edge}^{(k-1)}\|
-       < \varepsilon_p.
-\]
-Typical values are $\varepsilon_L = 10^{-3}$, $\varepsilon_m = 10^{-3}$ and $\varepsilon_p = 10^{-4}$.  
-The update of the outer-jet exit velocity (or mass flow) is performed using under-relaxation:
+Convergence tolerances are typically \(\varepsilon_L=\varepsilon_m=10^{-3}\) for load and mass, and \(\varepsilon_p=10^{-4}\) for rim-pressure updates.
+The under-relaxed update of \(U_{\mathrm{out}}\) reads
 \[
   U_{\mathrm{out}}^{(k+1)} = \omega\,U_{\mathrm{out}}^{(k)} + (1-\omega)\,U_{\mathrm{out}}^{\rm target}, 
   \quad 0<\omega<1,
 \]
-with a typical relaxation factor $\omega = 0.5$, ensuring smooth convergence of the coupled loop.
-
+with \(\omega\simeq 0.5\); a similar under-relaxation is applied to the exponent \(m\) in \(g(\zeta)\).
 
 \subsection*{4. Outputs and interpretation}
 When the iterative loop has converged to a self-consistent state, the simulation returns:
 \begin{itemize}
-  \item The full fields \(p(r,z)\), \(u(r,z)\), \(w(r,z)\) in the core region.
-  \item The rim-pressure profile \(p_{\rm edge}(z)\) and wall-jet related quantities (entrainment rate, wall-jet speed/thickness evolution).
-  \item The mass flows \(\dot m_{\rm out}\), \(\dot m_{\rm leak}\), and effective lift \(L\).
-  \item The estimated power requirement of the outer curtain jet, e.g.\ \(P \approx \dot m_{\rm out}\,\tfrac12\,U_{\rm out}^2\) (plus losses).
-  \item A sensitivity map of the equilibrium height \(h\), sealing efficiency, and load capacity with respect to design variables \(b_0\), \(\alpha_r\), \(\alpha_z\), \(D_{m,\min}\), \(E\), \(C_f\).
+  \item The core fields \(p(r,z)\), \(u(r,z)\), \(w(r,z)\) and the derived out-of-plane vorticity \(\omega_\theta=\partial_r w-\partial_z u\) to visualize the near-rim recirculation cell.
+  \item The rim-pressure profile \(p_{\rm edge}(z)\), the sealing conductance \(C_{\mathrm{seal}}(\zeta)\), and the wall-jet integral quantities (entrainment, wall-jet speed/thickness evolution).
+  \item The mass flows \(\dot m_{\rm out}\), \(\dot m_{\rm leak}\), and effective lift \(L\), with the mass balance check \(\dot m_{\rm in}=\dot m_{\rm out}+\dot m_{\rm leak}\).
+  \item The estimated outer-jet power \(\dot W_{\rm jet}\approx \dot m_{\rm out}\,\tfrac12\,U_{\rm out}^2\) corrected by turning/impingement losses.
+  \item A parameter-sensitivity summary for \(h\), sealing performance and lift versus \(U_{\rm out}\), \(b_0\), \(\alpha_r\), \(\alpha_z\), \(D_{m,\min}\), \(E\), \(C_f\), \(k_e\), \(m\), \(\beta\).
 \end{itemize}
-This simulation methodology therefore ensures a consistent equilibrium of the hover system: the outer curtain dynamically sustains the over-pressure in the core, while the core pressure field influences and limits the outer-jet conditions. The result is a predictive tool for design and optimization of the hovering disc.
-
-
-
-
+Diagnostic plots should include \(U_z(z)\) and \(p_{\mathrm{edge}}(z)\) at \(r=R^{-}\), and the sign of the radial velocity in a thin ring inside the rim.
 \section{Validity of Modeling Assumptions}
 \label{sec:validity-of-modeling-assumptions}
 
@@ -251,22 +215,62 @@ This closure is valid provided that:
 \end{itemize}
 It is particularly suited to parametric design and control studies where the detailed jet micro-structure is not resolved.
 
+
 \subsection{Boundary Conditions and Curtain Coupling} \label{sec:boundaryconditions}
-The outer slot jet issues \emph{downwards} and acts as an \emph{air curtain} that
-limits radial leakage from the cushion. 
-
-The pressure imposed along the rim $r=R^{-}$ is formulated as a momentum-based sealing boundary condition:
+The outer annular jet issues \emph{downwards} and acts as an \emph{air curtain} that limits radial leakage from the cushion. 
+To enforce the requested kinematics --- purely vertical at the injection plane and vanishing axial speed at the floor --- we prescribe a smooth vertical profile for the curtain axial velocity:
 \begin{equation}
-p_{\mathrm{edge}}(z)=p_0 + \min\!\Bigg(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Bigg),
-\qquad \zeta=\frac{z}{H}. \label{eq:p_edge_seal}
+  U_z(z) = U_{\mathrm{out}}\,\Phi\!\left(\zeta\right), 
+  \qquad \zeta=\frac{z}{H},\quad \Phi(1)=1,\ \Phi(0)=0,
+  \label{eq:Uz_profile}
 \end{equation}
-Here, $H$ is the effective curtain height (in this study set equal to the gap $h$), $b(z)$ the local slot- or curtain-equivalent width, and $D_{m,\min}$ the minimum deflection modulus representing the resistance to cross-flow leakage. This formulation directly links the outer jet momentum and wall-jet behaviour to the rim-pressure acting on the cushion core.
+with e.g.\ $\Phi(\zeta)=\sin^2\!\big(\tfrac{\pi}{2}\zeta\big)$ or $\Phi(\zeta)=\zeta^n$ ($n=2$--$3$) to avoid cusps. 
+This choice regularizes the turning of the curtain into a radial wall-jet along the ground.
 
-This expression guarantees continuity of rim pressure along $z$ and smoothly connects
-the low static pressure region at the slot exit with the higher static build-up near the
-floor.
+\paragraph*{Composite rim pressure with impingement pedestal.}
+Upon impingement on the rigid floor, part of the curtain's kinetic energy is converted into static pressure. 
+We model the impingement-induced pedestal as
+\begin{equation}
+  \Delta p_{\mathrm{imp}}=\xi_{\mathrm{imp}}\;\frac{1}{2}\,\rho_j\,U_{\mathrm{out}}^2,
+  \qquad 
+  \xi_{\mathrm{imp}}=\frac{1}{1+K_{\mathrm{turn}}},
+  \label{eq:delta_p_imp}
+\end{equation}
+where $K_{\mathrm{turn}}$ is a turning-loss coefficient. 
+The rim pressure along $r=R^{-}$ is then defined by a composite (pedestal $+$ momentum-sealing) expression, capped by the available head~$\Delta P$:
+\begin{equation}
+  p_{\mathrm{edge}}(z)=p_0 
+  + \underbrace{\Delta p_{\mathrm{imp}}\;g(\zeta)}_{\text{impingement pedestal}}
+  + \underbrace{\left(\frac{\rho_j\,U_z(z)^2\,b(z)}{H}\right)\frac{1}{D_{m,\min}}\,[1-g(\zeta)]}_{\text{momentum sealing}}
+\end{equation}
+with
+\begin{equation}
+  p_{\mathrm{edge}}(z)\le p_0+\Delta P.
+  \label{eq:pedestal_composite}
+\end{equation}
+Here $g(\zeta)$ is a monotone increasing shape (e.g.\ $g(\zeta)=1-(1-\zeta)^m$, $m\in[2,4]$) that shifts weight from momentum sealing aloft to static build-up near the floor. 
+The effective slot width may be taken as $b(z)=b_0 + s\,z$ to reflect geometric spreading.
 
+\paragraph*{Robin sealing condition at the rim.}
+Instead of prescribing $p(R^{-},z)=p_{\mathrm{edge}}(z)$ (pure Dirichlet), we impose a mixed \emph{Robin} condition that filters the exchange through the curtain, consistent with its local momentum:
+\begin{equation}
+  -\,\rho\,\kappa_r\,\partial_r p\big|_{r=R^{-}} 
+  = C_{\mathrm{seal}}(\zeta)\,\big(p(R^{-},z)-p_0\big),
+  \qquad 
+  C_{\mathrm{seal}}(\zeta)=\frac{\rho_j\,U_z(z)^2}{\mu}\;\frac{b(z)}{H}\;\frac{1}{D_{m,\min}}\,[1-g(\zeta)].
+  \label{eq:robin}
+\end{equation}
+This promotes a realistic near-floor recirculation: the curtain pushes air downward and radially outward at the ground, while the low-$\zeta$ reduction of $C_{\mathrm{seal}}$ limits leakage and bends streamlines back into the core.
 
+\paragraph*{Wall-jet initialization at the turning radius.}
+At the ground ($z=0$), in the narrow annulus where the curtain turns radially, we initialize the radial wall-jet with thickness $\delta_t$ and characteristic speed $U_c(r_t)$ at the turning radius $r_t$ by continuity of mass and momentum (including $K_{\mathrm{turn}}$):
+\begin{equation}
+  q(r_t)=\rho\,U_c(r_t)\,\delta_t, 
+  \qquad 
+  m(r_t)=\rho\,U_c(r_t)^2\,\delta_t.
+  \label{eq:walljet_init}
+\end{equation}
+Downstream, the wall-jet integral balances are advanced with entrainment $E$ and skin-friction $C_f$ as in the base model.
 \section{Non-dimensional formulation}
 \label{sec:non-dimensionalization}
 
