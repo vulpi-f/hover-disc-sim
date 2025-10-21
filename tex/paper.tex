@@ -259,7 +259,7 @@ limits radial leakage from the cushion.
 The pressure imposed along the rim $r=R^{-}$ is formulated as a momentum-based sealing boundary condition:
 \begin{equation}
 p_{\mathrm{edge}}(z)=p_0 + \min\!\Bigg(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Bigg),
-\qquad \zeta=\frac{z}{H}. \label{eq:p_edge_momentum}
+\qquad \zeta=\frac{z}{H}. \label{eq:p_edge_seal}
 \end{equation}
 Here, $H$ is the effective curtain height (in this study set equal to the gap $h$), $b(z)$ the local slot- or curtain-equivalent width, and $D_{m,\min}$ the minimum deflection modulus representing the resistance to cross-flow leakage. This formulation directly links the outer jet momentum and wall-jet behaviour to the rim-pressure acting on the cushion core.
 
@@ -268,7 +268,7 @@ the low static pressure region at the slot exit with the higher static build-up 
 floor.
 
 \paragraph{Remark on sealing vs static pressure.}
-The composite rim pressure in Eq.~\eqref{eq:p_edge_momentum} is a
+The composite rim pressure in Eq.~\eqref{eq:p_edge_seal} is a
 \emph{modeling device}: the $(1-\zeta)^n$ term provides a minimal representation
 of static-pressure build-up as the curtain turns near the floor, while the
 $\zeta^m$ term encodes the sealing effectiveness of a high-momentum jet near the slot.
@@ -309,7 +309,7 @@ Here $\hat R^{-}=R^{-}/R_{\mathrm{tot}}$, and in this study we set $H=h$
 for consistency with the gap height.  The pressure distribution
 $\hat p_{\mathrm{edge}}(\hat z)$ represents the momentum-based
 sealing effect of the air curtain according to
-Eq.~\eqref{eq:p_edge_momentum}.
+Eq.~\eqref{eq:p_edge_seal}.
 
 Natural velocity scales are
 \begin{equation}
