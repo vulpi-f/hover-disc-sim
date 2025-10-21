@@ -86,78 +86,93 @@ Elimination of $u,w$ gives the pressure formulation:
 \section{Simulation Methodology}
 \label{sec:simulation-method}
 
-The numerical procedure has been redeveloped to consistently include the coupled dynamics between the cushion core and the surrounding outer jet, explicitly accounting for the mechanisms of jet impingement, wall-jet transition, and the formation of the sealing flow beneath the disc. The aim of this new framework is to determine the steady velocity and pressure fields in both the inner and outer flow regions by enforcing a mutual equilibrium condition between the overpressurized core and the outer annular jet.
+This section presents a clear, step-by-step procedure for simulating the coupled dynamics of the core cushion region and the outer annular curtain jet. The algorithm is designed to determine the steady pressure and velocity fields in both regions, and thereby to compute the load-carrying capacity, leakage mass flows, and power requirement of the hover system.
 
-\subsection*{1. Physical description and domain coupling}
-
-The hover system can be decomposed into two interconnected flow regions:
+\subsection*{1. Domains and coupling overview}
+The hover disc system is conceptually split into two interacting regions:
 \begin{itemize}
-    \item The \textit{core cavity} ($0 \le r \le R^-,\, 0 \le z \le h$), filled with quasi-stagnant, pressurized air that supports the load and reacts to leakage and entrainment;
-    \item The \textit{outer-jet region}, comprising the annular curtain of high-velocity air expelled through the peripheral slot at $r = R^-$, its impingement on the ground surface, and its subsequent radial transition into a wall jet.
+  \item The \emph{core cavity}, defined by \(0 \le r \le R^{-},\;0 \le z \le h\), filled with pressurized air that supports the load and from which a peripheral leakage ring allows outflow.
+  \item The \emph{outer-jet region}, comprising the annular slot at \(r=R^{-}\) through which the high-velocity curtain issues downward, impinges on the ground, and subsequently transitions into a radial wall-jet along the ground surface.
+\end{itemize}
+The key coupling mechanism is as follows: the outer jet impinges, creating a rim pressure distribution \(p_{\rm edge}(z)\) at the boundary \(r=R^{-}\); this rim pressure acts as a boundary condition for the core pressure field. In turn, the core pressure field determines the leakage mass flux and thus affects the required outer jet flow and velocity to maintain equilibrium.
+
+\subsection*{2. Governing sub-problems}
+\paragraph{2.1 Outer jet / curtain model}  
+Given a trial outer-slot exit velocity \(U_{\rm out}\) and mass flow \(\dot m_{\rm out}\), the outer jet sub-model computes:
+\begin{itemize}
+  \item The impingement and turning losses at the ground (characterised by \(K_{\rm turn}\)) and the wall-jet initial conditions (speed \(U_c(r_t)\), thickness \(\delta_t\)).
+  \item The integral wall-jet development from the turning radius \(r_t\) out to \(r=R^{-}\). This uses mass and momentum balances:
+    \[
+      \frac{d q}{dr} = E\,U_c(r), 
+      \qquad
+      \frac{d m}{dr} = -\tfrac12\,\rho\,U_c(r)^2\,C_f(r)
+    \]
+    together with a growth law for the jet thickness \(\delta'(r)=k_e\).  
+  \item From the wall-jet profile, the rim pressure (seal effect) is derived in the form  
+    \[
+      p_{\rm edge}(z) = p_0 + \min\!\Bigg(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Bigg)
+      \]
+    for \(0\le z\le H\). Here \(H\) is the effective curtain height (in this work \(H=h\)), \(b(z)\) is the local effective slot width (or slot-equivalent width), and \(D_{m,\min}\) is the minimum deflection modulus.  
 \end{itemize}
 
-The outer jet issues downward from the slot and impinges on the ground, creating a stagnation region and a local overpressure near the disk rim. The jet then deflects radially outward, forming a thin wall jet that develops along the ground surface. The combination of the impinging flow and the near-ground shear layer generates a local pressure barrier that inhibits radial leakage of the core air — this is the so-called \textit{seal effect}. The seal arises from the balance between the momentum of the impinging jet and the static pressure beneath the disc. Its strength depends on the slot exit velocity, the hover gap $h$, and the radial expansion geometry of the outer curtain. As the hover height increases, the jet impingement weakens, reducing the seal efficiency and leading to greater leakage; conversely, a smaller hover gap intensifies the impingement and raises the rim pressure, enhancing the sealing action.
-
-The two regions interact strongly: the core overpressure modifies the effective slot exit conditions and, therefore, the outer-jet momentum and impingement behavior. In turn, the outer-jet impingement and wall-jet transition determine the pressure boundary condition acting on the core rim. The equilibrium between these coupled mechanisms defines the stationary state of the hover system.
-
-\subsection*{2. Governing equations and coupling formulation}
-
-In the core region, the flow is represented by a quasi-laminar Darcy–Stokes formulation:
-\begin{equation}
-u = -\frac{\kappa_r}{\mu}\,\partial_r p, 
-\qquad
-w = -\frac{\kappa_z}{\mu}\,\partial_z p,
-\end{equation}
-\begin{equation}
-\frac{1}{r}\partial_r\left(r\,\rho\,\kappa_r\,\partial_r p\right)
-+ \partial_z\left(\rho\,\kappa_z\,\partial_z p\right) = 0,
-\quad p = \rho R_g T.
-\end{equation}
-
-Boundary conditions are:
+\paragraph{2.2 Core cushion model}  
+With \(p_{\rm edge}(z)\) now available, the core model solves:
+\[
+  \frac{1}{r}\,\partial_r\!\Bigl(r\,\rho\,\kappa_r\,\partial_r p\Bigr)
+  + \partial_z\!\Bigl(\rho\,\kappa_z\,\partial_z p\Bigr) = 0,
+  \quad
+  \rho = \frac{p}{R_g\,T_\infty}, 
+\]
+together with the Darcy–Stokes closure:
+\[
+  u = -\frac{\kappa_r}{\mu}\,\partial_r p,
+  \qquad
+  w = -\frac{\kappa_z}{\mu}\,\partial_z p,
+\]
+where \(\kappa_r=\alpha_r\,h^2\), \(\kappa_z=\alpha_z\,h^2\).  
+Boundary conditions:
 \begin{itemize}
-  \item Symmetry at the centerline ($r = 0$);
-  \item No-normal-flow at the upper and lower boundaries ($z = 0$ and $z = h$);
-  \item A rim-pressure boundary at $r = R^-$, determined dynamically from the outer-jet solution.
+  \item \(\partial_r p(0,z)=0\) (axis symmetry),
+  \item \(\partial_z p(r,0)=\partial_z p(r,h)=0\) (no-normal-flow at ground and disc surface),
+  \item \(p(R^{-},z)=p_{\rm edge}(z)\) (rim coupling to outer jet).
+\end{itemize}
+From the computed fields \(p(r,z),\,u(r,z),\,w(r,z)\), the following integrated quantities are evaluated:
+\begin{itemize}
+  \item Average cushion pressure: \(\bar p_{\rm core} = \frac{1}{\pi (R^{-})^2 h}\,\displaystyle\int_0^{R^{-}}\!\int_0^h p(r,z)\,2\pi r\,dz\,dr\).
+  \item Leakage mass flow through the peripheral ring: \(\dot m_{\rm leak} = \displaystyle\int_{R^{-}}^{R_{\rm tot}}\!\int_0^{h}\rho(r,z)\,u(r,z)\,dz\,dr\) (or a suitably reduced one-dimensional approximation).
+  \item Lift force: \( L = \displaystyle\int_{0}^{R^{-}}\!\! (p(r,z)-p_0)\,2\pi r\,dr \approx W \).
 \end{itemize}
 
-The outer jet is represented by a reduced-order model that captures its impingement dynamics and wall-jet evolution. The impingement pressure distribution $p_\text{imp}(r,z)$ and the resulting wall-jet pressure decay are expressed through a non-dimensional profile function $\Phi(\zeta)$:
-\begin{equation}
-p_\text{rim}(z) = p_0 + \rho_j U_{\text{out}}^2 \Phi(\zeta),
-\qquad \zeta = \frac{z}{H},
-\end{equation}
-where $\Phi(\zeta)$ describes the normalized pressure field through the impingement and near-wall zones, obtained from empirical or semi-analytical jet correlations. The model also computes entrainment and radial mass transport along the ground, linking the jet’s kinetic energy to the sealing pressure beneath the rim.
-
-\subsection*{3. Iterative coupling and stationary equilibrium}
-
-The numerical algorithm follows a coupled iterative procedure:
+\subsection*{3. Iterative coupling and convergence}
+The overall algorithm proceeds as follows:
 \begin{enumerate}
-    \item Initialize an estimate for the outer-jet exit velocity $U_{\text{out}}$ and flow rate $\dot{m}_{\text{out}}$, together with geometric parameters of the slot and hover gap.
-    \item Solve the outer-jet model to determine the impingement pressure distribution $p_\text{rim}(z)$, the local stagnation overpressure, and the entrainment rates associated with the wall-jet transition.
-    \item Apply $p_\text{rim}(z)$ as the boundary condition at $r = R^-$ and solve the governing equations for the core region to obtain the pressure field $p(r,z)$ and velocity components $(u,w)$.
-    \item Compute the average cushion pressure $\overline{p}_{\text{core}}$ and the corresponding load-carrying capacity. Compare it to the target load or hover condition.
-    \item If the difference exceeds the convergence tolerance, update $U_{\text{out}}$ (and consequently $p_\text{rim}$) according to the deviation between the core and target pressures, then repeat from step~2.
-    \item Convergence is achieved when the core and outer-jet fields reach mutual equilibrium, such that the mass fluxes and rim pressures are self-consistent.
+  \item Choose an initial guess for \(U_{\rm out}\) and \(\dot m_{\rm out}\) (or equivalently the slot geometry \(b_0\), etc.).  
+  \item Solve the outer-jet model and compute \(p_{\rm edge}(z)\).  
+  \item Apply \(p_{\rm edge}(z)\) to the core model as boundary condition at \(r=R^{-}\); solve for \(p(r,z),u,w\).  
+  \item Compute \(\bar p_{\rm core}\), \(\dot m_{\rm leak}\), and lift \(L\).  
+  \item Compare \(L\) (or equivalently \(\bar p_{\rm core}\)) with the target load \(W\), and check mass balance:  
+    \[
+      \dot m_{\rm in} = \dot m_{\rm out} + \dot m_{\rm leak}.
+    \]
+  \item If the residuals exceed chosen tolerances \(\varepsilon_L,\varepsilon_m\), update \(U_{\rm out}\) (or \(b_0,\dot m_{\rm out}\)) via under-relaxation and repeat from step 2 until convergence.  
 \end{enumerate}
+Convergence is declared when:
+\[
+  \frac{|L - W|}{W} < \varepsilon_L,\quad
+  \frac{|\dot m_{\rm in} - (\dot m_{\rm out} + \dot m_{\rm leak})|}{\dot m_{\rm in}} < \varepsilon_m.
+\]
 
-At convergence, the model ensures:
-\begin{equation}
-\dot{m}_\text{in} = \dot{m}_\text{leak} + \dot{m}_\text{out},
-\end{equation}
-and the pressure and velocity fields satisfy both global mass conservation and local momentum balance across the core–jet interface. The resulting steady configuration reproduces the observed \textit{seal equilibrium}, where the outer jet dynamically maintains the overpressure within the core while being itself modulated by it.
-
-\subsection*{4. Outputs and physical interpretation}
-
-Once equilibrium is achieved, the simulation provides:
+\subsection*{4. Outputs and interpretation}
+When the iterative loop has converged to a self-consistent state, the simulation returns:
 \begin{itemize}
-  \item The complete pressure and velocity fields $(p,\,u,\,w)$ in the core cavity;
-  \item The rim pressure and wall-jet profiles in the outer region;
-  \item Mass flow rates and entrainment coefficients for both zones;
-  \item The effective lift capacity and power requirement of the hover system;
-  \item Sensitivity of the equilibrium height and seal efficiency to slot geometry, supply flow, and ambient pressure.
+  \item The full fields \(p(r,z)\), \(u(r,z)\), \(w(r,z)\) in the core region.
+  \item The rim-pressure profile \(p_{\rm edge}(z)\) and wall-jet related quantities (entrainment rate, wall-jet speed/thickness evolution).
+  \item The mass flows \(\dot m_{\rm out}\), \(\dot m_{\rm leak}\), and effective lift \(L\).
+  \item The estimated power requirement of the outer curtain jet, e.g.\ \(P \approx \dot m_{\rm out}\,\tfrac12\,U_{\rm out}^2\) (plus losses).
+  \item A sensitivity map of the equilibrium height \(h\), sealing efficiency, and load capacity with respect to design variables \(b_0\), \(w\), \(\alpha_r\), \(\alpha_z\), \(D_{m,\min}\), \(E\), \(C_f\).
 \end{itemize}
+This simulation methodology therefore ensures a consistent equilibrium of the hover system: the outer curtain dynamically sustains the over-pressure in the core, while the core pressure field influences and limits the outer-jet conditions. The result is a predictive tool for design and optimization of the hovering disc.
 
-The improved numerical scheme thus integrates the physical phenomena of outer-jet impingement, wall-jet transition, and sealing behavior directly into the steady-state solution. By enforcing the mutual consistency of the core and jet regions, it provides a more realistic and predictive model of the hover-disc equilibrium than the previous decoupled approach.
 
 
 
