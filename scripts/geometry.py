@@ -39,7 +39,7 @@ ax.text(h_y_dist+0.02, 0.5*h_c, r"$h$", va="center", fontsize=12)
 v_dist = 0.02
 ax.annotate("", xy=(R_i, h_c + v_dist), xytext=(R_tot, h_c + v_dist),
             arrowprops=dict(arrowstyle="<->", lw=1.5, color="#FF0000"))
-ax.text(R_tot+0.01, h_c+v_dist, r"$w$", ha="left", va="center", color="#FF0000", fontsize=11)
+ax.text(R_tot+0.01, h_c+v_dist, r"$b_0$", ha="left", va="center", color="#FF0000", fontsize=11)
 
 # Portata massica entrante nella zona centrale (da sopra verso il cuscino)
 arr_L = h_c-0.04
