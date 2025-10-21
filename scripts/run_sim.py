@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hover Disc — Core Solver + Shooting + Curtain Model (aligned with paper.tex)
-=============================================================================
+Hover Disc — Core + Outer-Jet (plots core & seal together)
+==========================================================
 
-This version aligns the Python implementation to the LaTeX spec provided in paper.tex.
+Modifiche principali per aderire alla procedura descritta nel file TeX e per
+visualizzare nello stesso plot sia il core sia l'outer jet di sigillo:
 
-Key alignments:
-1) Shooting target: the mean cushion overpressure averaged over the *core area* (r ∈ [0, R^-]) 
-   must equal p_c_core = p_c * (R_tot / R_minus)^2, where p_c = W / (π R_tot^2).
-2) Effective curtain height: H = h (as per paper).
-3) Rim pressure p_edge(z): composite of a static build-up and momentum-limited sealing term:
-     p_edge(z) = p0
-                 + [ C_p * ρ_j * U0^2 ] * (1 - ζ)^n
-                 + min(ΔP_cap, ρ_j U(z)^2 b(z) / (H * Dm_min) ) * ζ^m
-   with ζ = z/H, b(z) = b0 * (1 + s ζ), U(z) = U0 * b0 / b(z).
-   Note: the static term is scaled with ρ_j U0^2 (not p_c).
-4) Plots: show the full radial extent up to R_tot (r̂ ∈ [0, 1]) and visually mark the annulus [R^-, R_tot].
+1) Shooting sul core: come da TeX, il target è la sovrapressione media sul solo core.
+2) Rim pressure conforme alla forma composita (termine statico + sigillo a momento limitato).
+3) Figure uniche: ogni figura mostra tutto il dominio — core (0→R^-) e annulus (R^-→R_tot).
+   - Quiver: frecce del campo di velocità nel core e frecce del getto nel sigillo (verticali);
+     uso di due scale indipendenti (una per il core, una per il getto) con due quiverkey.
+   - Colormap: mappa del modulo di velocità nel core (adimensionale) e mappa di U_j(z) (m/s)
+     nel sigillo; due colorbar separate.
+4) Solo quiver o colormap: niente iso-contour/streamplot; soltanto le due tipologie richieste.
 """
-
+import os
 from dataclasses import dataclass
+from typing import Tuple, Dict
+
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-from typing import Tuple, Dict
+from matplotlib.colors import Normalize
 
 # ---------------------------- Parameters ----------------------------
 @dataclass
@@ -79,7 +78,6 @@ class Params:
         if self.h_eff is None or self.h_eff <= 0.0:
             self.h_eff = self.h  # H = h per paper
 
-
 # ---------------------------- Helpers ----------------------------
 def ensure_figdir(path):
     try:
@@ -116,17 +114,19 @@ def average_cushion_overpressure_core(P: np.ndarray, p0: float,
     core_area = np.pi * (r[-1]**2)
     return np.trapezoid(integrand, r) / max(core_area, 1e-16)
 
-
 # ---------------------------- Solver ----------------------------
 def solve_core_once(pars: Params, U0: float
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                np.ndarray, np.ndarray, np.ndarray, float, float,
-                               Dict[str, float]]:
-    """Single elliptic solve with given U0; returns fields and diagnostics."""
+                               Dict[str, float], np.ndarray, np.ndarray]:
+    """
+    Single elliptic solve with given U0; returns fields and diagnostics.
+    Now also returns the outer-jet profile U_z(z) and p_edge(z) for plotting.
+    """
     R_minus = pars.R_tot - pars.w
 
     # References
-    p_c = pars.W / (np.pi * pars.R_tot**2)  # cushion overpressure over *total* area
+    p_c = pars.W / (np.pi * pars.R_tot**2)  # cushion overpressure over total area
     p_center = pars.p0 + p_c
 
     # Permeabilities
@@ -212,11 +212,12 @@ def solve_core_once(pars: Params, U0: float
     dPdz[0, :]    = (P[1, :] - P[0, :]) / dz
     dPdz[-1, :]   = (P[-1, :] - P[-2, :]) / dz
 
-    # Non-dimensional fields
-    r_hat = r / pars.R_tot
-    z_hat = z / pars.h
+    # Non-dimensional fields (core)
+    r_hat = (np.linspace(0.0, R_minus, pars.Nr)) / pars.R_tot
+    z_hat = (np.linspace(0.0, pars.h, pars.Nz)) / pars.h
     R_hat, Z_hat = np.meshgrid(r_hat, z_hat, indexing='xy')
 
+    p_c = pars.W / (np.pi * pars.R_tot**2)
     p_hat = (P - pars.p0) / p_c
     dp_hat_drhat = (pars.R_tot / p_c) * dPdr
     dp_hat_dzhat = (pars.h / p_c) * dPdz
@@ -225,7 +226,7 @@ def solve_core_once(pars: Params, U0: float
     S = (pars.alpha_z / pars.alpha_r) * (pars.R_tot / pars.h)
 
     # Diagnostics for shooting & leakage
-    pbar_core = average_cushion_overpressure_core(P, pars.p0, r)  # over *core*
+    pbar_core = average_cushion_overpressure_core(P, pars.p0, np.linspace(0.0, R_minus, pars.Nr))
     Delta_p_leak = float(np.mean(P[:, -1] - pars.p0))  # z-avg at rim
 
     diag = {
@@ -236,20 +237,21 @@ def solve_core_once(pars: Params, U0: float
         "U_profile_mean": float(np.mean(U_z)),
     }
 
-    return (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, R_minus/pars.R_tot, diag)
+    # Return also U_z(z) [m/s] and p_edge(z) [Pa] for the annulus plots
+    return (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, R_minus/pars.R_tot, diag, U_z, p_edge)
 
 def solve_core_with_shooting(pars: Params):
-    """Adjust U_out so that mean overpressure over the *core* equals p_c_core."""
+    """Adjust U_out so that mean overpressure over the core equals p_c_core."""
     p_c = pars.W / (np.pi * pars.R_tot**2)
     R_minus = pars.R_tot - pars.w
-    p_c_core = p_c * (pars.R_tot / max(R_minus, 1e-12))**2  # target over *core* area
+    p_c_core = p_c * (pars.R_tot / max(R_minus, 1e-12))**2  # target over core area
     U0 = pars.U_out
     history = []
     final_fields = None
 
     for it in range(1, pars.shoot_max_iter+1):
         results = solve_core_once(pars, U0)
-        (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag) = results
+        (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag, U_z, p_edge) = results
         pbar_core = diag["pbar_core"]
         err = pbar_core - p_c_core
         rel_err = err / max(p_c_core, 1e-16)
@@ -337,79 +339,99 @@ def curtain_and_powers(pars: Params, ctrl: Dict[str, float], leak: Dict[str, flo
         "U_out_final": float(U_out),
     }
 
-# ---------------------------- Plots ----------------------------
-def make_plots(pars: Params, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat):
+# ---------------------------- Plot Utils ----------------------------
+def _style_axes(ax, Rminus_hat, title=""):
+    ax.axvline(Rminus_hat, linestyle='-', linewidth=1.2)
+    # shade the outer annulus up to r̂=1
+    ax.axvspan(Rminus_hat, 1.0, alpha=0.15, hatch='//')
+    ax.set_xlabel(r'$\hat r$'); ax.set_ylabel(r'$\hat z$')
+    ax.set_ylim(0, 1.0)
+    ax.set_xlim(0, 1.0)
+    ax.set_title(title)
+
+def _outer_grid(Nz, Nr_outer, Rminus_hat):
+    r_hat_outer = np.linspace(Rminus_hat, 1.0, max(Nr_outer, 2))
+    z_hat = np.linspace(0.0, 1.0, Nz)
+    R_out, Z_out = np.meshgrid(r_hat_outer, z_hat, indexing='xy')
+    return R_out, Z_out
+
+# ---------------------------- Plots (core + outer jet together) ----------------------------
+def make_plots(pars: Params,
+               r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat,
+               U_z, p_edge):
     """
-    Show fields over the core domain, but extend x-limits to r̂=1 to visualize the full disc.
-    Shade the annulus [R^-, R_tot] for clarity.
+    Figure 1: Quiver con core + outer jet (due scale).
+    Figure 2: Colormap con |V̂_iso| nel core + U_j(z) nel sigillo (due colorbar).
+    Figure 3: Colormap della pressione adimensionale nel core + p_edge(z) nel sigillo.
     """
     ensure_figdir(pars.FIGDIR)
-    Nr, Nz = R_hat.shape[1], Z_hat.shape[0]
-    step_r = max(1, Nr // 30)
+
+    # ---------- Common grids ----------
+    Nr_core, Nz = R_hat.shape[1], Z_hat.shape[0]
+    step_r = max(1, Nr_core // 30)
     step_z = max(1, Nz // 15)
     Rq = R_hat[::step_z, ::step_r]
     Zq = Z_hat[::step_z, ::step_r]
     uq = u_hat[::step_z, ::step_r]
     wq = w_hat[::step_z, ::step_r]
 
-    Viso = np.sqrt(u_hat**2 + (S * w_hat)**2)
+    # Outer annulus grid
+    Nr_outer = max(2, Nr_core // 6)
+    R_out, Z_out = _outer_grid(Nz, Nr_outer, Rminus_hat)
 
-    def style_axes(full_xlim=True, title=""):
-        import matplotlib.pyplot as plt
-        ax = plt.gca()
-        ax.axvline(Rminus_hat, linestyle='-', linewidth=1.2)
-        # shade the outer annulus up to r̂=1
-        ax.axvspan(Rminus_hat, 1.0, alpha=0.15, hatch='//')
-        ax.set_xlabel(r'$\hat r$'); ax.set_ylabel(r'$\hat z$')
-        ax.set_ylim(0, 1.0)
-        if full_xlim:
-            ax.set_xlim(0, 1.0)  # show all the way to R_tot
-        ax.set_title(title)
-        return ax
+    # ---------- QU I V E R ----------
+    fig, ax = plt.subplots(figsize=(8.4, 4.8))
+    # core quiver (adimensionale)
+    Q1 = ax.quiver(Rq, Zq, uq, S*wq, angles='xy', scale_units='xy', scale=None)
+    # outer jet quiver (verticale, dimensionale in m/s, scala distinta)
+    Vjet = np.tile(-U_z.reshape(-1, 1), (1, R_out.shape[1]))  # negativo: verso il basso
+    jet_scale = np.nanmax(np.abs(U_z)) if np.nanmax(np.abs(U_z)) > 0 else 1.0
+    Q2 = ax.quiver(R_out, Z_out, np.zeros_like(Vjet), Vjet/jet_scale, angles='xy',
+                   scale_units='xy', scale=None, alpha=0.85)
+    _style_axes(ax, Rminus_hat, title='Quiver: core (adim.) + outer jet (m/s, scala separata)')
+    # Quiver keys (legenda delle scale)
+    ax.quiverkey(Q1, 0.15, -0.04, 1.0, r'core: $(\hat u, S\hat w)$ = 1', labelpos='E')
+    ax.quiverkey(Q2, 0.55, -0.04, 1.0, r'outer jet: $U_j$ = {:.1f} m/s'.format(jet_scale), labelpos='E')
+    plt.tight_layout(rect=[0,0.05,1,1])
+    if pars.SAVEFIG:
+        fig.savefig(os.path.join(pars.FIGDIR, 'quiver_velocity.png'), dpi=200)
 
-    # Quiver (û, S ŵ)
-    plt.figure(figsize=(7.6, 4.6))
-    plt.quiver(Rq, Zq, uq, S*wq, angles='xy', scale_units='xy', scale=None)
-    style_axes(title='Velocity field (quiver) — non-dimensional')
+    # ---------- C O L O R M A P  (velocità) ----------
+    Viso = np.sqrt(u_hat**2 + (S * w_hat)**2)  # adimensionale nel core
+    fig2, ax2 = plt.subplots(figsize=(8.4, 4.8))
+    # core colormap
+    core_cmap = plt.get_cmap('viridis')
+    core_norm = Normalize(vmin=np.nanmin(Viso), vmax=np.nanmax(Viso))
+    m1 = ax2.pcolormesh(R_hat, Z_hat, Viso, shading='auto', cmap=core_cmap, norm=core_norm)
+    # outer colormap: U_j(z) [m/s]
+    Ujet_field = np.tile(U_z.reshape(-1,1), (1, R_out.shape[1]))
+    jet_cmap = plt.get_cmap('plasma')
+    jet_norm = Normalize(vmin=np.nanmin(U_z), vmax=np.nanmax(U_z))
+    m2 = ax2.pcolormesh(R_out, Z_out, Ujet_field, shading='auto', cmap=jet_cmap, norm=jet_norm, alpha=0.9)
+
+    _style_axes(ax2, Rminus_hat, title=r'Colormap: $|\hat V_{\mathrm{iso}}|$ (core) + $U_j$ (outer jet)')
+    # due colorbar separate
+    cbar1 = fig2.colorbar(m1, ax=ax2, pad=0.02)
+    cbar1.set_label(r'$|\hat V_{\mathrm{iso}}|$ (core)')
+    cbar2 = fig2.colorbar(m2, ax=ax2, pad=0.10)
+    cbar2.set_label(r'$U_j$ [m/s] (outer)')
     plt.tight_layout()
-    if pars.SAVEFIG == 1:
-        plt.savefig(os.path.join(pars.FIGDIR, 'quiver_velocity.png'), dpi=180)
+    if pars.SAVEFIG:
+        fig2.savefig(os.path.join(pars.FIGDIR, 'cmap_speed.png'), dpi=200)
 
-    # |V̂_iso|
-    plt.figure(figsize=(7.6, 4.6))
-    plt.pcolormesh(R_hat, Z_hat, Viso, shading='auto')
-    plt.colorbar(label=r'$|\hat V_{\mathrm{iso}}|$')
-    style_axes(title=r'Speed magnitude $|\hat V_{\mathrm{iso}}|$ (non-dimensional)')
+    # ---------- C O L O R M A P  (pressione) ----------
+    fig3, ax3 = plt.subplots(figsize=(8.4, 4.8))
+    # core: p_hat
+    m3 = ax3.pcolormesh(R_hat, Z_hat, p_hat, shading='auto', cmap='viridis')
+    # outer: p_edge(z) (Pa), replicata radialmente
+    pedge_field = np.tile(p_edge.reshape(-1,1), (1, R_out.shape[1]))
+    m4 = ax3.pcolormesh(R_out, Z_out, pedge_field, shading='auto', cmap='magma')
+    _style_axes(ax3, Rminus_hat, title=r'Colormap: $\hat p$ (core) + $p_\mathrm{edge}$ (outer)')
+    cbar3 = fig3.colorbar(m3, ax=ax3, pad=0.02); cbar3.set_label(r'$\hat p$ (core)')
+    cbar4 = fig3.colorbar(m4, ax=ax3, pad=0.10); cbar4.set_label(r'$p_\mathrm{edge}$ [Pa] (outer)')
     plt.tight_layout()
-    if pars.SAVEFIG == 1:
-        plt.savefig(os.path.join(pars.FIGDIR, 'cmap_speed.png'), dpi=180)
-
-    # |û|
-    plt.figure(figsize=(7.6, 4.6))
-    plt.pcolormesh(R_hat, Z_hat, np.abs(u_hat), shading='auto')
-    plt.colorbar(label=r'$|\hat u|$')
-    style_axes(title=r'Radial component $|\hat u|$ (non-dimensional)')
-    plt.tight_layout()
-    if pars.SAVEFIG == 1:
-        plt.savefig(os.path.join(pars.FIGDIR, 'cmap_ur.png'), dpi=180)
-
-    # |ŵ|
-    plt.figure(figsize=(7.6, 4.6))
-    plt.pcolormesh(R_hat, Z_hat, np.abs(w_hat), shading='auto')
-    plt.colorbar(label=r'$|\hat w|$')
-    style_axes(title=r'Axial component $|\hat w|$ (non-dimensional)')
-    plt.tight_layout()
-    if pars.SAVEFIG == 1:
-        plt.savefig(os.path.join(pars.FIGDIR, 'cmap_uz.png'), dpi=180)
-
-    # p̂
-    plt.figure(figsize=(7.6, 4.6))
-    plt.pcolormesh(R_hat, Z_hat, p_hat, shading='auto')
-    plt.colorbar(label=r'$\hat p$')
-    style_axes(title=r'Pressure $\hat p$ (non-dimensional)')
-    plt.tight_layout()
-    if pars.SAVEFIG == 1:
-        plt.savefig(os.path.join(pars.FIGDIR, 'cmap_pressure.png'), dpi=180)
+    if pars.SAVEFIG:
+        fig3.savefig(os.path.join(pars.FIGDIR, 'cmap_pressure.png'), dpi=200)
 
     plt.show()
 
@@ -436,7 +458,7 @@ if __name__ == '__main__':
     pars = Params()
 
     # Solve core with shooting on U_out
-    (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag), shoot_ctrl = solve_core_with_shooting(pars)
+    (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag, U_z, p_edge), shoot_ctrl = solve_core_with_shooting(pars)
 
     # Leakage model and power/flows
     leak = leakage_and_power(pars, diag)
@@ -444,4 +466,4 @@ if __name__ == '__main__':
 
     # Report + plots
     print_report(pars, shoot_ctrl, leak, flows)
-    make_plots(pars, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat)
+    make_plots(pars, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, U_z, p_edge)
