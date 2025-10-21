@@ -47,7 +47,6 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \item $R_{\mathrm{tot}}$ -- total radius of the disc.
   \item $h$ -- hovering height from the ground.
   \item $w$ -- width of the peripheral leakage ring; $R^{-}=R_{\mathrm{tot}}-w$ is its inner radius.
-  \item $b$ -- thickness of the outer annular jet slot.
   \item $h_{\mathrm{eff}}$ -- effective sealing height (characteristic of curtain recirculation).
   \item $p_0$ -- ambient pressure; $p_c=W/(\pi R_{\mathrm{tot}}^2)$ -- cushion pressure supporting the load $W$.
   \item $U_{\mathrm{out}}$, $\rho_j$ -- speed and density of the outer jet.
@@ -55,13 +54,14 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \item $\dot{m}_{\mathrm{in}}$ -- air mass flow entering internal region.
   \item $\dot{m}_{\mathrm{out}}$ -- air mass flow of outer region.
   \item $\dot{m}_{\mathrm{loss}}$ -- air mass flow exiting internal region.
-  \item $b_0$ -- slot thickness of the outer curtain jet at injection.
   \item $H$ -- effective curtain height (equal to $h$ in this study, representing the vertical extent over which the curtain resists leakage).
+  \item $b_0$ -- initial slot thickness of the outer annular jet at injection.
+  \item $b(z)$ -- effective local width of the curtain slot or equivalent jet region as a function of $z$ (see rim-pressure model).
 \end{itemize}
 
 \begin{table}[h]
   \centering
-  \caption{Default model parameters and empirical coefficients}
+  \caption{Default model parameters and empirical coefficients (nominal values are exemplary and require calibration).}
   \label{tab:model-params}
   \begin{tabular}{@{}llll@{}}
     \toprule
@@ -267,14 +267,6 @@ This expression guarantees continuity of rim pressure along $z$ and smoothly con
 the low static pressure region at the slot exit with the higher static build-up near the
 floor.
 
-\paragraph{Remark on sealing vs static pressure.}
-The composite rim pressure in Eq.~\eqref{eq:p_edge_seal} is a
-\emph{modeling device}: the $(1-\zeta)^n$ term provides a minimal representation
-of static-pressure build-up as the curtain turns near the floor, while the
-$\zeta^m$ term encodes the sealing effectiveness of a high-momentum jet near the slot.
-This separation avoids conflating the jet's low static pressure near the slot with
-its strong \emph{barrier} effect on radial leakage.
-
 \section{Non-Dimensionalization and Plotting Conventions}
 \label{sec:non-dimensionalization-and-plotting-conventions}
 
@@ -396,7 +388,8 @@ $R^{-}$ & Inner radius of the leakage ring ($R^{-}=R_{\mathrm{tot}}-w$) \\
 $w$ & Width of peripheral leakage region \\
 $h$ & Hovering height (disc--ground gap) \\
 $h_{\mathrm{eff}}$ & Effective sealing height at rim \\
-$b$ & Slot thickness of the curtain jet \\
+$b_0$ & Slot thickness at injection (plane jet width) \\
+$b(z)$ -- effective local width of the curtain slot or equivalent jet region as a function of $z$ \\
 $U_{\mathrm{out}}$ & Outer jet velocity \\
 $\rho_j$ & Density of outer jet \\
 $\rho$ & Density in the core region \\
@@ -408,8 +401,6 @@ $W$ & Payload supported by cushion \\
 $\kappa_r,\kappa_z$ & Effective permeabilities (radial/axial) \\
 $\alpha_r,\alpha_z$ & Dimensionless permeability coefficients \\
 $u,w$ & Velocity components (radial, vertical) \\
-$\Phi(z)$ & Dimensionless rim-pressure distribution \\
-$C_t$ & Curtain transfer coefficient \\
 $\Delta p$ & Rim pressure increment \\
 $\Pi_{\mathrm{edge}}$ & Dimensionless rim pressure amplitude \\
 $\mathcal{A}$ & Permeability anisotropy parameter \\
@@ -417,13 +408,9 @@ $\hat r,\hat z,\hat p$ & Dimensionless coordinates and pressure \\
 $\hat u,\hat w$ & Dimensionless velocity components \\
 $S$ & Velocity anisotropy ratio $S=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)$ \\ $D_m$ & Deflection modulus (momentum index) $\rho U_0^2 b_0/(\Delta P\,H)$ \\
 $D_{m,\min}$ & Minimum deflection modulus for sealing \\
-$b_0$ & Slot thickness at injection (plane jet width) \\
 $H$ & Effective curtain height \\
 $s$ & Jet spreading parameter ($\approx0.06$--$0.09$) \\
 $\Delta P_{\max}$ & Maximum sustainable pressure difference \\
-$C_p$ & static-pressure coefficient for rim build-up (order $10^{-1}$)\\
-$C_s$ & sealing-effectiveness coefficient for high-momentum curtain (order $1$)\\
-$m,n$ & shape exponents for sealing and static contributions, respectively\\
 $q(r)$ & Mass flow per unit circumference in wall-jet model \\
 $m(r)$ & Momentum flux per unit circumference in wall-jet model \\
 $\delta_t$ & Wall-jet thickness at turning radius $r_t$ \\
