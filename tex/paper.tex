@@ -59,6 +59,25 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \item $H$ -- effective curtain height (equal to $h$ in this study, representing the vertical extent over which the curtain resists leakage).
 \end{itemize}
 
+\begin{table}[h]
+  \centering
+  \caption{Default model parameters and empirical coefficients}
+  \label{tab:model-params}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Symbol & Description & Unit & Nominal value \\
+    \midrule
+    $\alpha_r$     & Radial permeability coefficient      & —     & (e.g.\ 0.1) \\
+    $\alpha_z$     & Axial permeability coefficient       & —     & (e.g.\ 0.05) \\
+    $E$            & Entrainment coefficient (wall-jet)  & —     & (e.g.\ 0.3) \\
+    $C_f$          & Wall friction coefficient           & —     & (e.g.\ 0.005) \\
+    $k_e$          & Wall-jet thickness growth rate      & m/m   & (e.g.\ 0.01) \\
+    $K_{\rm turn}$ & Momentum loss coefficient at turning& —     & (e.g.\ 1.2) \\
+    $D_{m,\min}$   & Minimum deflection modulus         & —     & (e.g.\ 0.2) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Model Overview}
 \label{sec:model-overview}
 
@@ -162,6 +181,26 @@ Convergence is declared when:
   \frac{|\dot m_{\rm in} - (\dot m_{\rm out} + \dot m_{\rm leak})|}{\dot m_{\rm in}} < \varepsilon_m.
 \]
 
+\paragraph{Convergence criteria and under-relaxation.}
+The iterative solver uses the following convergence tolerances:
+\[
+  \frac{|L - W|}{W} < \varepsilon_L,
+  \qquad
+  \frac{|\dot m_{\rm in} - (\dot m_{\rm out} + \dot m_{\rm leak})|}
+       {\dot m_{\rm in}} < \varepsilon_m,
+  \qquad
+  \|\hat p_{\rm edge}^{(k)} - \hat p_{\rm edge}^{(k-1)}\|
+       < \varepsilon_p.
+\]
+Typical values are $\varepsilon_L = 10^{-3}$, $\varepsilon_m = 10^{-3}$ and $\varepsilon_p = 10^{-4}$.  
+The update of the outer-jet exit velocity (or mass flow) is performed using under-relaxation:
+\[
+  U_{\mathrm{out}}^{(k+1)} = \omega\,U_{\mathrm{out}}^{(k)} + (1-\omega)\,U_{\mathrm{out}}^{\rm target}, 
+  \quad 0<\omega<1,
+\]
+with a typical relaxation factor $\omega = 0.5$, ensuring smooth convergence of the coupled loop.
+
+
 \subsection*{4. Outputs and interpretation}
 When the iterative loop has converged to a self-consistent state, the simulation returns:
 \begin{itemize}
@@ -215,21 +254,15 @@ It is particularly suited to parametric design and control studies where the det
 
 \subsection{Boundary Conditions and Curtain Coupling} \label{sec:boundaryconditions}
 The outer slot jet issues \emph{downwards} and acts as an \emph{air curtain} that
-limits radial leakage from the cushion. The pressure imposed along the rim
-$r=R^{-}$ is modeled as the superposition of two physically motivated
-contributions:
-\begin{equation}
-  p_{\mathrm{edge}}(z)=p_0 + \min\!\Big(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Big),\qquad \zeta=\frac{z}{H}.
-  \label{eq:p_edge_momentum}
-\end{equation}
+limits radial leakage from the cushion. 
 
-On $z=0$ and $z=h$ we impose no-normal-flow in the reduced core model
+The pressure imposed along the rim $r=R^{-}$ is formulated as a momentum-based sealing boundary condition:
 \begin{equation}
-  \partial_z p(r,0)=\partial_z p(r,h)=0,
+p_{\mathrm{edge}}(z)=p_0 + \min\!\Bigg(\Delta P,\;\frac{\rho\,U(z)^2\,b(z)}{H\,D_{m,\min}}\Bigg),
+\qquad \zeta=\frac{z}{H}. \label{eq:p_edge_momentum}
 \end{equation}
-while $r=0$ enforces symmetry $\partial_r p(0,z)=0$. The inner make-up jet is not
-imposed as a local BC in the core; its effect enters the \emph{global} mass balance
-(see Sec.~\ref{sec:simulation-method}).
+Here, $H$ is the effective curtain height (in this study set equal to the gap $h$), $b(z)$ the local slot- or curtain-equivalent width, and $D_{m,\min}$ the minimum deflection modulus representing the resistance to cross-flow leakage. This formulation directly links the outer jet momentum and wall-jet behaviour to the rim-pressure acting on the cushion core.
+
 This expression guarantees continuity of rim pressure along $z$ and smoothly connects
 the low static pressure region at the slot exit with the higher static build-up near the
 floor.
@@ -388,10 +421,15 @@ $b_0$ & Slot thickness at injection (plane jet width) \\
 $H$ & Effective curtain height \\
 $s$ & Jet spreading parameter ($\approx0.06$--$0.09$) \\
 $\Delta P_{\max}$ & Maximum sustainable pressure difference \\
-\bottomrule
 $C_p$ & static-pressure coefficient for rim build-up (order $10^{-1}$)\\
 $C_s$ & sealing-effectiveness coefficient for high-momentum curtain (order $1$)\\
 $m,n$ & shape exponents for sealing and static contributions, respectively\\
+$q(r)$ & Mass flow per unit circumference in wall-jet model \\
+$m(r)$ & Momentum flux per unit circumference in wall-jet model \\
+$\delta_t$ & Wall-jet thickness at turning radius $r_t$ \\
+$r_t$ & Effective turning radius of the outer jet on the ground \\
+$U_c(r)$ & Local characteristic velocity of the wall-jet at radius $r$\\
+\bottomrule
 \end{tabular}
 
 % =====================================================
