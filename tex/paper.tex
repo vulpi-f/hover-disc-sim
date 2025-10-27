@@ -10,11 +10,28 @@
 \usepackage{siunitx}
 \usepackage{graphicx}
 \usepackage[font=small,labelfont=bf,labelsep=endash]{caption}
+\usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{physics}
 \usepackage{cite}
 \usepackage{hyperref}
 \usepackage{float}
+\usepackage{listings}
+\lstdefinestyle{codeblock}{
+  basicstyle=\ttfamily\small,   % testo un filo più piccolo
+  columns=fullflexible,         % evita allargamenti orizzontali
+  keepspaces=true,
+  breaklines=true,              % spezza le righe lunghe
+  breakatwhitespace=true,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space}, % segno di continuazione
+  frame=single,                 % cornice (se la vuoi)
+  framerule=0.2pt,
+  xleftmargin=1em, xrightmargin=0em,
+  aboveskip=0.8\baselineskip,   % spazio sopra il blocco
+  belowskip=0.8\baselineskip,   % spazio sotto
+  captionpos=t                  % caption sotto al listato
+}
+
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 
 \title{Design Methodology for a Hovering Disc with an Annular Air Curtain:\\
@@ -27,13 +44,8 @@ Coupled Cushion-Ground Model and Pressure-Sealing Design Procedure}
 \maketitle
 
 \begin{abstract}
-This work presents a physically consistent design and modelling framework for a hovering disc supported by an annular high-velocity air curtain.
-The objective is to generate a central high-pressure cushion capable of sustaining an external load, while the annular jet prevents radial escape of air rather than providing vertical thrust.
-The coupled model includes:
-(i) an axisymmetric, low-Mach compressible core region governed by an anisotropic Darcy-Brinkman formulation, and
-(ii) a momentum-based curtain sub-model acting as a pressure-sealing boundary through a mixed (Robin) condition.
-A step-by-step computational procedure is defined for implementation, including the evaluation of lift, leakage, sealing index, and power.
-The methodology yields a clear basis for sizing and performance assessment of air-cushion hover devices.
+We present a coupled modelling and design framework for a hovering disc supported by a central pressure cushion and an annular high-velocity air curtain that acts as a \emph{dynamic pressure seal} (rather than a thrust source). The curtain suppresses radial leakage from the core, enabling a stable high-pressure region capable of supporting an external load.
+The coupled model comprises: (i) an axisymmetric, low-Mach core governed by an anisotropic Darcy reduction, and (ii) a momentum-based curtain sub-model applied as a mixed (Robin) sealing boundary. We provide a step-by-step computational procedure for implementation and sizing, including lift matching, leakage, a seal number, and power estimates. The method yields a clear, code-ready basis for performance assessment and dimensioning of air-cushion hover devices.
 \end{abstract}
 
 \begin{figure}[t]
@@ -49,17 +61,17 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
 \begin{itemize}
   \item $R_{\mathrm{tot}}$ -- total radius of the disc.
   \item $h$ -- hovering height from the ground.
-  \item $h_{\mathrm{eff}}$ -- effective sealing height (characteristic of curtain recirculation).
+  \item $h_{\mathrm{eff}}$ -- effective sealing gap accounting for ground roughness, $h_{\mathrm{eff}}=h-\varepsilon_g$.
   \item $p_0$ -- ambient pressure; $p_c=W/(\pi R_{\mathrm{tot}}^2)$ -- cushion pressure supporting the load $W$.
   \item $U_{\mathrm{out}}$, $\rho_j$ -- speed and density of the outer jet.
   \item $\mu$ -- dynamic viscosity; $R_g$ -- specific gas constant for air.
   \item $\dot{m}_{\mathrm{in}}$ -- air mass flow entering internal region.
   \item $\dot{m}_{\mathrm{out}}$ -- air mass flow of outer region.
   \item $\dot{m}_{\mathrm{loss}}$ -- air mass flow exiting internal region.
-  \item $H$ -- effective curtain height (equal to $h$ in this study, representing the vertical extent over which the curtain resists leakage).
   \item $b_0$ -- slot thickness of the outer annular jet at injection; the jet centreline is located at $R^{-}=R_{\mathrm{tot}}-b_0/2$.
   \item $b(z)$ -- local width of the curtain slot as a function of $z$ (constant or weakly varying).
   \item $\varepsilon_g$ -- representative ground roughness used to define the effective sealing gap $h_{\mathrm{eff}} = h - \varepsilon_g$.
+  \item Assumptions: $b_0\ll R_{\mathrm{tot}}$, axisymmetric mean flow, low-$Re$ in the cushion.
 \end{itemize}
 
 \begin{table}[h]
@@ -93,7 +105,7 @@ Under isothermal, low–Mach conditions the mean flow obeys an \emph{anisotropic
   \label{eq:darcy_brinkman}
 \end{equation}
 where $\kappa_r=\alpha_r h^2$ and $\kappa_z=\alpha_z h^2$ represent effective permeabilities in the radial and vertical directions.
-Inertia is neglected provided $Re_c=\rho U_c h/\mu\ll1$; if this limit is exceeded, a Brinkman term or RANS correction may be used.
+Inertia is neglected provided $Re_c=\rho U_c h/\mu\ll 1$; if this limit is exceeded, a Brinkman correction may be added (outside the present scope).
 Mass conservation and state equation read
 \begin{equation}
   \frac{1}{r}\,\partial_r\!\left(r\rho u\right)+\partial_z(\rho w)=0,
@@ -124,7 +136,7 @@ Given a trial outer-slot exit velocity \(U_{\rm out}\) and mass flow \(\dot m_{\
   \item The composite rim pressure \(p_{\mathrm{edge}}(z)\) with shape \(g(\zeta)\) [Eq.~\eqref{eq:pedestal_composite}] and cap \(p_0+\Delta P\).
   \item Initialization of the radial wall-jet at the turning radius \(r_t\) via \((q,m)\) conditions in Eq.~\eqref{eq:walljet_init}, then integral advancement using entrainment \(E\), friction \(C_f\) and thickness growth \(\delta'(r)=k_e\).
 \end{itemize}
-The curtain conductance \(C_{\mathrm{seal}}(\zeta)\) implied by the momentum part of \(p_{\mathrm{edge}}\) is used in the Robin coupling at the rim [Eq.~\eqref{eq:robin}].
+
 \paragraph{2.2 Core cushion model}  
 With \(p_{\rm edge}(z)\) now available, the core model solves:
 \[
@@ -170,13 +182,45 @@ The overall algorithm proceeds as follows:
   \item Update \(\bar p_{\rm core}\), \(\dot m_{\rm leak}\), and lift \(L\); enforce mass balance \(\dot m_{\rm in}=\dot m_{\rm out}+\dot m_{\rm leak}\).
   \item Check convergence on load, mass balance \emph{and} a recirculation indicator (mean sign of \(u\) in a thin ring at \(r\lesssim R^{-}\)): if not converged, under-relax \(U_{\mathrm{out}}\) and the pedestal weight via \(m\) in \(g(\zeta)\), then repeat.
 \end{enumerate}
-Convergence tolerances are typically \(\varepsilon_L=\varepsilon_m=10^{-3}\) for load and mass, and \(\varepsilon_p=10^{-4}\) for rim-pressure updates.
+
+Convergence tolerances are typically $\varepsilon_L=\varepsilon_m=10^{-3}$ and a rim-pressure update residual $\varepsilon_p=10^{-4}$ (max-norm over $z\!\in\![0,h]$).
 The under-relaxed update of \(U_{\mathrm{out}}\) reads
 \[
   U_{\mathrm{out}}^{(k+1)} = \omega\,U_{\mathrm{out}}^{(k)} + (1-\omega)\,U_{\mathrm{out}}^{\rm target}, 
   \quad 0<\omega<1,
 \]
 with \(\omega\simeq 0.5\); a similar under-relaxation is applied to the exponent \(m\) in \(g(\zeta)\).
+
+\newpage
+\begin{lstlisting}[style=codeblock,
+  caption={Solver outline (code-ready)},
+  label={lst:solver-outline}]
+Given W, R_tot, h (=H), air props, alpha_r, alpha_z, b0, Dm_min, E, C_f, k_e:
+  init U_out, mdot_out
+  repeat
+    # Curtain rim pressure (sealing BC)
+    build U_z(z) = U_out * Phi(z/H)
+    compute p_edge(z) with impingement + momentum sealing; cap at p0 + dP
+
+    # Core solve (Darcy / Darcy-Brinkman)
+    solve for p(r,z) with Robin at r=R_minus and no-normal-flow at z=0,h
+    recover u, w from gradients
+
+    # Mass & lift
+    eval mdot_leak, L, and residuals:
+      e_L = |L - W| / W
+      e_m = |mdot_in - (mdot_out + mdot_leak)| / mdot_in
+
+    # Wall-jet (consistency check)
+    init q(rt), m(rt) and march with entrainment E, growth k_e, friction C_f
+
+    # Update
+    U_out = omega * U_out + (1 - omega) * U_out_target   (omega ~ 0.5)
+  until (e_L < 1e-3) and (e_m < 1e-3) and rim-pressure residual < 1e-4
+\end{lstlisting}
+
+
+
 
 \subsection*{4. Outputs and interpretation}
 When the iterative loop has converged to a self-consistent state, the simulation returns:
@@ -260,6 +304,14 @@ with
 \end{equation}
 Here $g(\zeta)$ is a monotone increasing shape (e.g.\ $g(\zeta)=1-(1-\zeta)^m$, $m\in[2,4]$) that shifts weight from momentum sealing aloft to static build-up near the floor. 
 The effective slot width may be taken as $b(z)=b_0 + s\,z$ to reflect geometric spreading.
+
+\paragraph*{Physical consistency.}
+The rim pressure must satisfy $p_{\mathrm{edge}}(z)\ge p_0$. Moreover, the curtain work over the near-floor seal strip should be commensurate with the injected momentum flux, e.g.
+\begin{equation}
+\int_{0}^{h}\!\big[p_{\mathrm{edge}}(z)-p_0\big]\;\mathrm{d}z
+\;\sim\; \mathcal{O}\!\left(\frac{\rho_j U_{\mathrm{out}}^2\,b_0}{D_{m,\min}}\right),
+\end{equation}
+which prevents non-physical rim over-pressurization in the coupling.
 
 \paragraph*{Robin sealing condition at the rim.}
 Instead of prescribing $p(R^{-},z)=p_{\mathrm{edge}}(z)$ (pure Dirichlet), we impose a mixed \emph{Robin} condition that filters the exchange through the curtain, consistent with its local momentum:
@@ -360,6 +412,12 @@ The flow behaviour in the cushion region can be characterized by a small number 
 S = \frac{\kappa_z}{\kappa_r} \frac{R_{\mathrm{tot}}}{h},
 \]
 where \(\mathrm{Re}\) and \(\mathrm{Ma}\) are the Reynolds and Mach numbers respectively, and \(\Gamma\) the geometric aspect ratio.
+A key design group is the \emph{seal number}
+\begin{equation}
+\Sigma \;=\; \frac{\rho_j U_{\mathrm{out}}^2\,b}{H\,p_c},
+\end{equation}
+which measures the dynamic capacity of the curtain relative to the cushion pressure.
+Values $\Sigma \gtrsim 3$--$5$ are typically required for robust sealing at moderate gaps.
 
 \subsection{Non-dimensionalization of the outer jet}
 
@@ -397,11 +455,11 @@ With this formulation:
 - quantities related to the outer jet scale with its momentum flux and geometric confinement parameters \((b,H)\);
 - the coupling condition at the interface \(r = R^{-}\) can be expressed consistently as a non-dimensional pressure continuity constraint:
   \[
-  \hat{p}_{\mathrm{edge}} = 
-  \min\left( 
-      \frac{\Delta P}{p_c}, 
-      \frac{\rho_j U_j^2 b}{H D_{m,\min} p_c}
-  \right),
+  \hat{p}_{\mathrm{edge}} \;=\; 
+  \min\!\left( 
+      \frac{\Delta P}{p_c}, \;
+      \frac{\Sigma}{D_{m,\min}}
+  \right).
   \]
   ensuring that both regions share a unified, dimensionless reference frame.
 
@@ -457,14 +515,20 @@ and the non-dimensional sealing and leakage indices are
   \qquad
   \Pi_{\mathrm{leak}} = \frac{\dot m_{\mathrm{leak}}}{\rho_0 U_{\mathrm{out}} 2\pi R^{-} b}.
 \]
-These provide quick performance metrics for design optimization.
+Together with the seal number $\Sigma$ and the efficiency $\eta$, these provide quick performance metrics for design optimization.
+A convenient energetic metric is the sealing efficiency,
+\[
+  \eta \;=\; \frac{W\,h}{\dot W_{\mathrm{jet}}}\,,
+\]
+which grows with improved sealing (lower leakage for a given $\dot W_{\mathrm{jet}}$).
+
 
 \section*{Design Procedure Summary}
 \begin{enumerate}
   \item Specify $W$, $R$, $h$, and air properties $(\rho_0,\mu,T_0)$.
   \item Compute target cushion pressure $p_c = W/(\pi R^2)$.
-  \item Choose sealing index $\Sigma_{\min}\!\in[3,5]$ and estimate
-        $U_{\mathrm{out}}=\sqrt{\Sigma_{\min} H p_c / (\rho_j b)}$.
+  \item Choose seal number target $\Sigma_{\min}\!\in[3,5]$ and estimate
+      $U_{\mathrm{out}}=\sqrt{\Sigma_{\min} H p_c / (\rho_j b)}$.
   \item Evaluate $Ma$, $Re_j$ and adjust $(b,H)$ for $Ma<0.3$, $Re_j>2000$.
   \item Iterate the coupled solver until $|L-W|/W<10^{-3}$ and mass balance error $<10^{-3}$.
   \item Output: $L(h)$ curve, $\Pi_{\mathrm{seal}}$, $\Pi_{\mathrm{leak}}$, $\dot W_{\mathrm{jet}}$.
@@ -478,6 +542,7 @@ Coefficients $\alpha_r$ and $\alpha_z$ should be calibrated from axisymmetric CF
 The secondary make-up flow is lumped into the global mass balance rather than as a local inlet.
 Thermal effects are neglected ($T=T_\infty$) and Mach numbers remain below 0.3.
 Future extensions will introduce a steady energy equation, refined wall-jet correlations and the automated lift-matching loop.
+Potential unsteady feedback (vertical oscillations) may arise from the coupling between cushion compressibility and curtain dynamics; this can be assessed by linearizing the mass balance around the hovering point to check that $dL/dh<0$ and adding a simple lumped compliance model for the core.
 
 \paragraph{Appendix: minimal rationale for the composite rim pressure.}
 Consider a control volume hugging the rim over height $h$ and thickness $O(b)$.
@@ -494,7 +559,7 @@ coefficients $(C_p,C_s)$ and mild shape exponents $(m,n)$.
 
 \paragraph{On the choice of $D_{m,\min}$.}
 We take $D_{m,\min}$ from air-curtain literature (order $10^{-1}$) as a design parameter; in absence of calibration, $D_{m,\min}=0.2$ provides a conservative default.
-Sensitivity to this parameter is reported without altering the solver or figures.
+Sensitivity to this parameter should be reported alongside calibrated runs.
 
 \section{Nomenclature}
 \label{sec:nomenclature}
@@ -507,7 +572,7 @@ $R^{-}$ & Inner radius of the leakage ring (centreline of jet slot, $R^{-}=R_{\m
 $h$ & Hovering height (disc--ground gap) \\
 $h_{\mathrm{eff}}$ & Effective sealing height at rim \\
 $b_0$ & Slot thickness at injection (plane jet width) \\
-$b(z)$ -- effective local width of the curtain slot or equivalent jet region as a function of $z$ \\
+$b(z)$ & effective local width of the curtain slot or equivalent jet region as a function of $z$ \\
 $U_{\mathrm{out}}$ & Outer jet velocity \\
 $\rho_j$ & Density of outer jet \\
 $\rho$ & Density in the core region \\
@@ -520,11 +585,12 @@ $\kappa_r,\kappa_z$ & Effective permeabilities (radial/axial) \\
 $\alpha_r,\alpha_z$ & Dimensionless permeability coefficients \\
 $u,w$ & Velocity components (radial, vertical) \\
 $\Delta p$ & Rim pressure increment \\
-$\Pi_{\mathrm{edge}}$ & Dimensionless rim pressure amplitude \\
 $\mathcal{A}$ & Permeability anisotropy parameter \\
 $\hat r,\hat z,\hat p$ & Dimensionless coordinates and pressure \\
 $\hat u,\hat w$ & Dimensionless velocity components \\
 $S$ & Velocity anisotropy ratio $S=(\alpha_z/\alpha_r)(R_{\mathrm{tot}}/h)$ \\ $D_m$ & Deflection modulus (momentum index) $\rho U_0^2 b_0/(\Delta P\,H)$ \\
+$\Sigma$ & Seal number $\Sigma=\rho_j U_{\mathrm{out}}^2 b / (H p_c)$ \\
+$\eta$ & Sealing efficiency $\eta=W h/\dot W_{\mathrm{jet}}$ \\
 $D_{m,\min}$ & Minimum deflection modulus for sealing \\
 $H$ & Effective curtain height \\
 $s$ & Jet spreading parameter ($\approx0.06$--$0.09$) \\
