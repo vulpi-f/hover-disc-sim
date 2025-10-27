@@ -49,9 +49,7 @@ class Params:
     m: float = 1.2             # [-] exponent for sealing weight ζ^m
     n_exp: float = 2.0         # [-] exponent for static build-up (1−ζ)^n
     C_p: float = 0.15          # [-] static coefficient (O(1e-1)); multiplies ρ_j U0^2
-    Dm_min: float = 6.0        # [-] minimum deflection modulus for sealing
-    s_spread: float = 0.07     # [-] jet spreading parameter s (≈0.06–0.09)
-    DeltaP_cap: float = 5e5    # [Pa] cap for momentum term (set large to disable)
+    Dm_min: float = 0.20        # [-] minimum deflection modulus for sealing
     # Stokes–Darcy closure
     alpha_r: float = 0.12      # [-] κ_r = α_r h^2
     alpha_z: float = 0.05      # [-] κ_z = α_z h^2
@@ -72,6 +70,21 @@ class Params:
     shoot_max_iter: int = 25
     shoot_tol: float = 5e-3    # |p̄ − p_c_core|/p_c_core <= shoot_tol
     shoot_gain: float = 0.6    # proportional gain on U_out
+
+    # Rim pressure / wall-jet (ridotto)
+    E: float = 0.3        # [-] entrainment (aumenta portata, riduce U)
+    k_e: float = 0.01      # [-] crescita spessore: b(z)=b0*(1+k_e*ζ)  (ζ=z/H)
+    K_turn: float = 1.2    # [-] coeff. di impingement/turning per Δp_static
+
+    # (opz.) attrito parete aggregato (non usato nella forma base)
+    C_f: float = 0.0005       # [-] tienilo a 0 per ora
+
+    n_flow: float = 2.0  # [-] esponente in Φ(ζ)=ζ^n_flow
+    gamma_clip: float = 50.0
+    DeltaP_cap: float = 0.0   # [Pa] 0 = disattivato; se >0 limita p_edge plotting: p_edge_static = min(p0+Δp_imp, p0+DeltaP_cap)
+    eps_num: float = 1e-12
+    seal_relax: float = 0.5  # 0<seal_relax<=1: under-relax su gamma(z)
+
     # IO
     SAVEFIG: int = 1
     FIGDIR: str = "../figs"
@@ -91,19 +104,42 @@ def rho_of(P: np.ndarray, Rg: float, T: float) -> np.ndarray:
     return P / (Rg * T)
 
 def phi_static(z: np.ndarray, H: float, n_exp: float) -> np.ndarray:
-    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
+    zhat = np.clip(z / max(H, pars.eps_num), 0.0, 1.0)
     return (1.0 - zhat) ** n_exp
 
 def phi_seal(z: np.ndarray, H: float, m: float) -> np.ndarray:
-    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
+    zhat = np.clip(z / max(H, pars.eps_num), 0.0, 1.0)
     return zhat ** m
 
-def jet_profile(U0: float, b0_slot: float, z: np.ndarray, H: float, s: float) -> Tuple[np.ndarray, np.ndarray]:
-    """Simple spreading: b(z)=b0*(1+s*ζ), U(z)=U0*b0/b(z)."""
-    zhat = np.clip(z / max(H, 1e-12), 0.0, 1.0)
-    b_z = b0_slot * (1.0 + s * zhat)
-    U_z = U0 * (b0_slot / b_z)
-    return U_z, b_z
+def walljet_marching_radial(pars: Params, U_inj: float, r_turn: float, r_end: float, Nr: int):
+    """
+    Marching radiale semplificato: aggiorna U(r) e b(r) con entrainment E e attrito parete C_f.
+    Restituisce una stima di Δp_static(z) media e di un C_seal_eff medio da convertire in gamma(z).
+    Questo è uno stub: coeff. e closure possono essere raffinati.
+    """
+    r = np.linspace(r_turn, r_end, max(Nr, 2))
+    dr = r[1]-r[0] if len(r)>1 else 1.0
+
+    U = np.full_like(r, U_inj, dtype=float)
+    b = np.full_like(r, pars.b_slot, dtype=float)
+
+    for j in range(1, len(r)):
+        # crescita spessore
+        b[j] = b[j-1] * (1.0 + pars.k_e * dr / max(pars.h_eff, pars.eps_num))
+        # perdita per attrito semplificata (forma Darcy–Weisbach compressa)
+        tau = 0.5 * pars.rho_j * (U[j-1]**2) * pars.C_f
+        dU = - (tau / max(pars.rho_j * U[j-1] * b[j-1], pars.eps_num)) * dr
+        # entrainment (riduce U, aumenta portata effettiva)
+        dU -= (pars.E * U[j-1]) * (dr / max(r[j-1], pars.eps_num))
+        U[j] = max(0.0, U[j-1] + dU)
+
+    # stime grezze per Δp_static e C_seal medio:
+    U_edge = U[-1]
+    Delta_p_static_mean = 0.5 * pars.rho_j * (U_inj**2 - U_edge**2) / (1.0 + pars.K_turn)
+    Cseal_eff = (pars.rho_j * U_edge**2 / max(pars.mu, pars.eps_num)) * (np.mean(b) / max(pars.h_eff, pars.eps_num)) * (1.0 / max(pars.Dm_min, pars.eps_num))
+
+    return Delta_p_static_mean, Cseal_eff
+
 
 def average_cushion_overpressure_core(P: np.ndarray, p0: float,
                                       r: np.ndarray) -> float:
@@ -137,30 +173,59 @@ def solve_core_once(pars: Params, U0: float
 
     # Rim pressure p_edge(z)
     H = pars.h_eff
-    U_z, b_z = jet_profile(U0, pars.b_slot, z, H, pars.s_spread)
+    
+    # ---- WALL-JET RIDOTTO + DATI ROBIN ----
+    H = pars.h_eff
+    Delta_p_static_mean, Cseal_eff = walljet_marching_radial(pars, U0, R_minus, pars.R_tot, 100)
+    # shape functions (ζ = z/H)
+    zhat = np.clip(z / max(H, pars.eps_num), 0.0, 1.0)
+    phi_static = (1.0 - zhat)**pars.n_exp     # (1-ζ)^n
+    phi_seal   = zhat**pars.m                 # ζ^m  (solo per gamma, ma la usiamo anche per mix)
+    # pedestal statico con forma + cap (se DeltaP_cap>0)
+    Delta_p_static_z = Delta_p_static_mean * phi_static
+    if pars.DeltaP_cap > 0.0:
+        Delta_p_static_z = np.minimum(Delta_p_static_z, pars.DeltaP_cap)
 
-    # Static part
-    Delta_p_static = pars.C_p * pars.rho_j * (U0**2)
-    # Momentum-limited sealing
-    momentum_term = (pars.rho_j * (U_z**2) * b_z) / max(H * max(pars.Dm_min, 1e-12), 1e-12)
-    Delta_p_seal_z = np.minimum(pars.DeltaP_cap, momentum_term)
-
-    p_edge = (pars.p0
-              + Delta_p_static * phi_static(z, H, pars.n_exp)
-              + Delta_p_seal_z * phi_seal(z, H, pars.m))
+    p_edge = pars.p0 + Delta_p_static_z  # profilo su z (array)
+    # conductance (gamma) costante → opzionale: modula con φ_seal per renderla ζ-dipendente
+    kr = pars.alpha_r * (pars.h**2)
+    Cseal_z = Cseal_eff * np.maximum(phi_seal, pars.Dm_min) / max(1.0, pars.Dm_min)  # lieve peso
+    gamma = (dr / max(kr, pars.eps_num)) * Cseal_z
+    U_z = U0 * (z/pars.h_eff)  # profilo placeholder coerente con ridotto (Φ(ζ)=ζ)
+    b_z = pars.b_slot * (1.0 + pars.k_e * (1.0 - z/pars.h_eff))
 
     # Initial guess
     P = np.zeros((pars.Nz, pars.Nr))
-    r_safe = max(R_minus, 1e-12)
+    r_safe = max(R_minus, pars.eps_num)
     rr = (r / r_safe)**2
     for i in range(pars.Nz):
         P[i, :] = p_center - (p_center - p_edge[i]) * rr
-
+    
     def apply_bc(Pf):
-        Pf[:, -1] = p_edge[:]         # r = R^-
-        Pf[:, 0]  = Pf[:, 1]          # r = 0 symmetry
-        Pf[0, :]  = Pf[1, :]          # z = 0 Neumann
-        Pf[-1, :] = Pf[-2, :]         # z = h Neumann
+        # simmetria e Neumann z
+        Pf[:, 0]  = Pf[:, 1]
+        Pf[0, :]  = Pf[1, :]
+        Pf[-1, :] = Pf[-2, :]
+
+        # Robin su r = R^- (ultima colonna)
+        kr = pars.alpha_r * (pars.h**2)
+        dr_loc = r[1] - r[0]
+
+        # densità "al bordo": usa l'ultima colonna corrente (prima dell'update)
+        rho_edge = rho_of(Pf[:, -1], pars.Rg, pars.T_inf)  # isoterma T_inf
+
+        # G = (k_r/dr)*gamma  con  gamma = (dr/k_r) * Cseal  ⇒  G ≈ Cseal (da walljet_reduced)
+        G = (kr / max(dr_loc, pars.eps_num)) * gamma
+
+        # Discretizzazione della Robin:
+        #   - rho*kr*(P_N - P_{N-1})/dr = G*(P_N - p0)
+        # => P_N * (rho*kr/dr - G) = (rho*kr/dr)*P_{N-1} - G*p0
+        # ma con i segni della forma usata nel codice:
+        #   (rho*kr/dr) * (P_N - P_{N-1}) = G * (P_N - p0)
+        # => P_N * (rho*kr/dr - G) = (rho*kr/dr)*P_{N-1} + G*p0
+        A = (rho_edge * kr) / max(dr_loc, pars.eps_num)
+        denom = (A + G)  # attenzione al segno coerente con lo stencil usato
+        Pf[:, -1] = (A * Pf[:, -2] + G * p_edge) / np.maximum(denom, 1e-30)
         return Pf
 
     P = apply_bc(P)
@@ -175,7 +240,7 @@ def solve_core_once(pars: Params, U0: float
         # SOR-Gauss–Seidel
         for i in range(1, pars.Nz-1):
             for j in range(1, pars.Nr-1):
-                rj = r[j] if r[j] > 1e-12 else 0.5*dr
+                rj = r[j] if r[j] > pars.eps_num else 0.5*dr
                 rho_jp = 0.5*(rho[i, j] + rho[i, j+1])
                 rho_jm = 0.5*(rho[i, j] + rho[i, j-1])
                 rho_ip = 0.5*(rho[i+1, j] + rho[i, j])
@@ -218,6 +283,19 @@ def solve_core_once(pars: Params, U0: float
     dp_hat_dzhat = (pars.h / p_c) * dPdz
     u_hat = - dp_hat_drhat
     w_hat = - dp_hat_dzhat
+
+    dwhat_drhat = np.zeros_like(w_hat)
+    dwhat_drhat[:, 1:-1] = (w_hat[:, 2:] - w_hat[:, :-2]) / (2.0 * (r_hat[1]-r_hat[0]))
+    dwhat_drhat[:, 0]    = (w_hat[:, 1] - w_hat[:, 0]) / (r_hat[1]-r_hat[0])
+    dwhat_drhat[:, -1]   = (w_hat[:, -1] - w_hat[:, -2]) / (r_hat[-1]-r_hat[-2])
+
+    duhat_dzhat = np.zeros_like(u_hat)
+    duhat_dzhat[1:-1, :] = (u_hat[2:, :] - u_hat[:-2, :]) / (2.0 * (z_hat[1]-z_hat[0]))
+    duhat_dzhat[0, :]    = (u_hat[1, :] - u_hat[0, :]) / (z_hat[1]-z_hat[0])
+    duhat_dzhat[-1, :]   = (u_hat[-1, :] - u_hat[-2, :]) / (z_hat[-1]-z_hat[-2])
+
+    omega_hat = dwhat_drhat - duhat_dzhat
+
     S = (pars.alpha_z / pars.alpha_r) * (pars.R_tot / pars.h)
 
     # Diagnostics
@@ -233,30 +311,70 @@ def solve_core_once(pars: Params, U0: float
     }
 
     # Return also U_z(z) [m/s] and p_edge(z) [Pa]
-    return (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, R_minus/pars.R_tot, diag, U_z, p_edge)
+    return (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, omega_hat, S, R_minus/pars.R_tot, diag, U_z, p_edge)
 
 def solve_core_with_shooting(pars: Params):
-    """Adjust U_out so that mean overpressure over the core equals p_c_core."""
+    """Adjust U_out so that mean overpressure over the core equals p_c_core,
+    and require stationarity of U_out/ṁ_out."""
     p_c = pars.W / (np.pi * pars.R_tot**2)
     R_minus = pars.R_tot - pars.b0
-    p_c_core = p_c * (pars.R_tot / max(R_minus, 1e-12))**2  # target over core area
+    p_c_core = p_c * (pars.R_tot / max(R_minus, pars.eps_num))**2  # target over core area
+
     U0 = pars.U_out
     history = []
     final_fields = None
 
-    for it in range(1, pars.shoot_max_iter+1):
+    # tolleranze addizionali (oltre a shoot_tol)
+    tol_stationary = 3e-3  # ~0.3% variazione relativa
+    tol_mass = 3e-1  # ~0.3% su mass balance relativo
+    mdot_out_prev = None
+    U_prev = None
+
+    for it in range(1, pars.shoot_max_iter + 1):
         results = solve_core_once(pars, U0)
-        (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag, U_z, p_edge) = results
+        r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, omega_hat, S, Rminus_hat, diag, U_z, p_edge = results
+
+
+        # errore di pressione media sul core
         pbar_core = diag["pbar_core"]
         err = pbar_core - p_c_core
         rel_err = err / max(p_c_core, 1e-16)
-        history.append((it, U0, pbar_core, rel_err))
 
-        if abs(rel_err) <= pars.shoot_tol:
+        # stima portata getto esterno con U0 corrente
+        mdot_out = pars.rho_j * U0 * (2.0 * np.pi * pars.R_tot * pars.b_slot)
+
+        # stima mdot_loss con una chiamata rapida al modello di leakage usando 'diag' corrente
+        leak_tmp = leakage_and_power(pars, diag)
+        mdot_loss = leak_tmp["mdot_loss"]
+        mdot_in   = mdot_loss - pars.beta * mdot_out
+
+        # residuo di massa (normalizzato su somma portate positive)
+        pos_sum = max(abs(mdot_in) + abs(mdot_out) + abs(mdot_loss), 1e-16)
+        mass_res = (mdot_in - (mdot_out + mdot_loss)) / pos_sum
+
+        print(f"[shoot {it:02d}] U_out={U0:7.3f} m/s | p̄_core={pbar_core:9.3f} Pa | "
+        f"rel_err={rel_err:+8.4f} | ṁ_out={mdot_out:.5f} kg/s | mass_res={mass_res:+.4e}",
+        flush=True)
+
+        # criteri di arresto: pressione OK + stazionarietà U_out e ṁ_out
+        stationary_ok = True
+        if U_prev is not None:
+            dU_rel = abs(U0 - U_prev) / max(abs(U_prev), 1e-16)
+            stationary_ok &= (dU_rel <= tol_stationary)
+        if mdot_out_prev is not None:
+            dmdot_rel = abs(mdot_out - mdot_out_prev) / max(abs(mdot_out_prev), 1e-16)
+            stationary_ok &= (dmdot_rel <= tol_stationary)
+
+        if (abs(rel_err) <= pars.shoot_tol) and stationary_ok and (abs(mass_res) <= tol_mass):
             final_fields = results
             break
 
-        # Proportional gain on U0 (keep positive)
+        # tracking
+        history.append((it, U0, pbar_core, rel_err, mdot_out, mass_res))
+
+        # Proportional update con under-relax (mantieni U_out > 0)
+        U_prev = U0
+        mdot_out_prev = mdot_out
         U0 = max(0.5, U0 * (1.0 - pars.shoot_gain * rel_err))
         final_fields = results
 
@@ -278,7 +396,7 @@ def leakage_and_power(pars: Params, diag: Dict[str, float]) -> Dict[str, float]:
 
     A_leak = 2.0 * np.pi * R_minus * pars.h
     # film leakage uses ring radial width b0
-    qprime = (pars.h**3 / (12.0 * pars.mu * max(pars.b0, 1e-12))) * Delta_p_leak
+    qprime = (pars.h**3 / (12.0 * pars.mu * max(pars.b0, pars.eps_num))) * Delta_p_leak
     Q_film = qprime * (2.0 * np.pi * R_minus)
     mdot_film = rho_c * Q_film
 
@@ -311,15 +429,17 @@ def curtain_and_powers(pars: Params, ctrl: Dict[str, float], leak: Dict[str, flo
     U_out = ctrl["U_out_final"]
     # Curtain mass flow (annular slot): ṁ_out = ρ_j U_out (2π R_tot b_slot)
     mdot_out = pars.rho_j * U_out * (2.0 * np.pi * pars.R_tot * pars.b_slot)
+
     # Recirculation β reduces make-up flow demand
     mdot_in = leak["mdot_loss"] - pars.beta * mdot_out
     mdot_in = float(mdot_in)
 
-    # Pneumatic powers (rough estimates)
-    P_out = (pars.rho_j * (U_out**3) * pars.b_slot) * (2.0 * np.pi * pars.R_tot)
+    # Pneumatic powers (use 1/2 * ṁ * U^2 for jet power)
+    P_out = 0.5 * mdot_out * (U_out**2)
+
     rho_c = leak["rho_c"]
     p_c = ctrl["p_c"]
-    P_in = ( (mdot_in / max(rho_c, 1e-16)) * p_c )
+    P_in = ((mdot_in / max(rho_c, 1e-16)) * p_c)
 
     P_out_shaft = P_out / max(pars.eta_out, 1e-16)
     P_in_shaft  = P_in  / max(pars.eta_in,  1e-16)
@@ -352,7 +472,7 @@ def _outer_grid(Nz, Nr_outer, Rminus_hat):
 
 # ---------------------------- Plots (all dimensionless) ----------------------------
 def make_plots(pars: Params,
-               r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat,
+               r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, omega_hat, S, Rminus_hat,
                U_z, p_edge, U_out_final):
     """
     Generates five figures (dimensionless) — see module docstring.
@@ -373,7 +493,7 @@ def make_plots(pars: Params,
     R_out, Z_out = _outer_grid(Nz, Nr_outer, Rminus_hat)
 
     # Outer jet dimensionless fields
-    Uhat_j = (U_z / max(U_out_final, 1e-12))                 # Û_j(z)
+    Uhat_j = (U_z / max(U_out_final, pars.eps_num))                 # Û_j(z)
     p_hat_edge_core = (p_edge - pars.p0) / max((pars.W / (np.pi * pars.R_tot**2)), 1e-16)  # p̂ (p_c-scale)
 
     # 1) QUIVER — core (û, S ŵ) + outer (−Û_j)
@@ -402,14 +522,23 @@ def make_plots(pars: Params,
     if pars.SAVEFIG:
         fig2.savefig(os.path.join(pars.FIGDIR, 'cmap_speed.png'), dpi=200)
 
-    # 3) COLORMAP — p̂ (core) + p̂_edge (outer) [p_c scaling]
+    # 3) COLORMAP — p̂ (core) + p̂_edge_static (outer) [p_c scaling]
     fig3, ax3 = plt.subplots(figsize=(8.4, 4.8))
     m3 = ax3.pcolormesh(R_hat, Z_hat, p_hat, shading='auto')
     pedge_core_field = np.tile(p_hat_edge_core.reshape(-1,1), (1, R_out.shape[1]))
-    m4 = ax3.pcolormesh(R_out, Z_out, pedge_core_field, shading='auto', alpha=0.9)
+
+    vmin = min(p_hat.min(), pedge_core_field.min())
+    vmax = max(p_hat.max(), pedge_core_field.max())
+    norm = Normalize(vmin=vmin, vmax=vmax)
+    cmap = plt.get_cmap('viridis')
+
+    m3 = ax3.pcolormesh(R_hat, Z_hat, p_hat, shading='auto', cmap=cmap, norm=norm)
+    m4 = ax3.pcolormesh(R_out, Z_out, pedge_core_field, shading='auto', cmap=cmap, norm=norm, alpha=0.9)
+    
     _style_axes(ax3, Rminus_hat, title=r'Colormap: $\hat p$ (core) + $\hat p_{\mathrm{edge}}$ (outer, $p_c$)')
-    cbar3 = fig3.colorbar(m3, ax=ax3, pad=0.02); cbar3.set_label(r'$\hat p$ (core, $p_c$)')
-    cbar4 = fig3.colorbar(m4, ax=ax3, pad=0.10); cbar4.set_label(r'$\hat p_{\mathrm{edge}}$ (outer, $p_c$)')
+    cbar3 = fig3.colorbar(m3, ax=ax3, pad=0.02)
+    cbar3.set_label(r'$\hat p$ (core, $p_c$)')
+
     plt.tight_layout()
     if pars.SAVEFIG:
         fig3.savefig(os.path.join(pars.FIGDIR, 'cmap_pressure.png'), dpi=200)
@@ -448,14 +577,32 @@ def make_plots(pars: Params,
     if pars.SAVEFIG:
         figw.savefig(os.path.join(pars.FIGDIR, 'cmap_uz.png'), dpi=200)
 
+    fig6, ax6 = plt.subplots(figsize=(8.4, 4.8))
+    om_max = float(np.nanmax(np.abs(omega_hat))) or 1.0
+    m6 = ax6.pcolormesh(R_hat, Z_hat, omega_hat, shading='auto',
+                        cmap='coolwarm', norm=TwoSlopeNorm(vmin=-om_max, vcenter=0.0, vmax=om_max))
+    _style_axes(ax6, Rminus_hat, title=r'Colormap: $\hat\omega_\theta$ (core)')
+    cbar6 = fig6.colorbar(m6, ax=ax6, pad=0.02); cbar6.set_label(r'$\hat\omega_\theta$')
+    if pars.SAVEFIG:
+        fig6.savefig(os.path.join(pars.FIGDIR, 'cmap_vorticity.png'), dpi=200)
+    
     plt.show()
 
 # ---------------------------- Main ----------------------------
 def print_report(pars: Params, shoot_ctrl: dict, leak: dict, flows: dict):
     print(" Shooting (p̄_core → p_c_core) ===")
     hist = shoot_ctrl["history"]
-    for it, U0, pbar_core, rel in hist:
-        print(f"  it {it:2d}: U_out={U0:8.3f} m/s | p̄_core={pbar_core:9.3f} Pa | rel_err={rel:+8.4f}")
+    for rec in hist:
+        # compatibilità: 4 o 6 campi
+        it, U0, pbar_core, rel, *rest = rec
+        mdot_out = rest[0] if len(rest) >= 1 else None
+        mass_res = rest[1] if len(rest) >= 2 else None
+
+        line = (f"  it {it:2d}: U_out={U0:8.3f} m/s | "
+                f"p̄_core={pbar_core:9.3f} Pa | rel_err={rel:+8.4f}")
+        if mdot_out is not None and mass_res is not None:
+            line += f" | ṁ_out={mdot_out:.5f} kg/s | mass_res={mass_res:+.4e}"
+        print(line)
     print(f"  Final U_out = {shoot_ctrl['U_out_final']:.3f} m/s")
     print(f"  Targets: p_c = {shoot_ctrl['p_c']:.3f} Pa,  p_c_core = {shoot_ctrl['p_c_core']:.3f} Pa")
 
@@ -468,12 +615,17 @@ def print_report(pars: Params, shoot_ctrl: dict, leak: dict, flows: dict):
     print(f"  ṁ_in  = {flows['mdot_in']:.6f} kg/s  (β={pars.beta})")
     print(f"  P_out (jet power)  = {flows['P_out']:.2f} W  | shaft ≈ {flows['P_out_shaft']:.2f} W (η_out={pars.eta_out})")
     print(f"  P_in  (pneum.)     = {flows['P_in']:.2f} W  | shaft ≈ {flows['P_in_shaft']:.2f} W (η_in={pars.eta_in})")
+    print("  Note: p_c_core è p_c scalato per l'area del core (R_tot/R_-)^2")
+    print("        p_edge (figure) mostra solo la componente statica (impingement/turning);")
+    print("        lo scambio momentum è incluso nella Robin tramite gamma(z).")
+
+
 
 if __name__ == '__main__':
     pars = Params()
 
     # Solve core with shooting on U_out
-    (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, diag, U_z, p_edge), shoot_ctrl = solve_core_with_shooting(pars)
+    (r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, omega_hat, S, Rminus_hat, diag, U_z, p_edge), shoot_ctrl = solve_core_with_shooting(pars)
 
     # Leakage model and power/flows
     leak = leakage_and_power(pars, diag)
@@ -481,4 +633,4 @@ if __name__ == '__main__':
 
     # Report + plots
     print_report(pars, shoot_ctrl, leak, flows)
-    make_plots(pars, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, S, Rminus_hat, U_z, p_edge, shoot_ctrl["U_out_final"])
+    make_plots(pars, r_hat, z_hat, R_hat, Z_hat, p_hat, u_hat, w_hat, omega_hat, S, Rminus_hat, U_z, p_edge, shoot_ctrl["U_out_final"])
