@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1761584663.53714 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1761584665.26187 0
+["pdflatex"] 1761585073.39501 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1761585075.05336 0
   "../figs/cmap_pressure.png" 1761577484 69190 61de1139518bc6e7fd616cdcccea8a97 ""
   "../figs/cmap_speed.png" 1761577484 64564 3dd4e7f35a19c901b40ad821c6170311 ""
   "../figs/cmap_ur.png" 1761577485 71333 5b0f7e906c760d1fc4f32ef436f0ed26 ""
@@ -127,8 +127,6 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/kvoptions/kvoptions.sty" 1656236481 22555 6d8e155cfef6d82c3d5c742fea7c992e ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/kvsetkeys/kvsetkeys.sty" 1665066333 13815 760b0c02f691ea230f5359c4e1de23a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/l3backend/l3backend-pdftex.def" 1751005717 30351 a2b09edc6c93a742566b222c33d0278e ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/l3kernel/expl3.sty" 1758055987 6558 bec0a36183594509927de3d0194841f8 ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/l3packages/xparse/xparse.sty" 1724854269 9783 ab4bee47700c04aadedb8da27591b0ab ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/listings/listings.cfg" 1741168183 1865 301ae3c26fb8c0243307b619a6aa2dd3 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/listings/listings.sty" 1741168182 81640 997090b6c021dc4af9ee00a97b85c5b4 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstmisc.sty" 1741168182 77051 be68720e5402397a830abb9eed5a2cb4 ""
@@ -141,7 +139,6 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/lm/t1lmr.fd" 1430474546 1867 996fe743d88a01aca041ed22cc10e1bb ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/lm/t1lmtt.fd" 1430474546 2682 555da1faa2e266801e4b221d01a42cb5 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/lm/ts1lmr.fd" 1430474546 1914 884882d7ebb0fd65cea93fca77ff6f5a ""
-  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/physics/physics.sty" 1356002062 29610 a9597219b282d9c78b02393dcd7d4322 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/refcount/refcount.sty" 1576433952 9878 9e94e8fa600d95f9c7731bb21dfb67a4 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/rerunfilecheck/rerunfilecheck.sty" 1751104012 9684 a33a14b82ce60d6e77cb9be689d79ee6 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/siunitx/siunitx.sty" 1752082377 344221 f0c98c737eca26294f5039e8afde731f ""
@@ -150,10 +147,10 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1761584661 33276 696b3dad90a4ec8d2182975be922d2ed ""
-  "paper.aux" 1761584665 7548 d54ba2d38df8c415efc951eea2bb0df1 "pdflatex"
-  "paper.out" 1761584665 3353 dabb11f2b48e9f73cf9cce8a4488676b "pdflatex"
-  "paper.tex" 1761584661 33276 696b3dad90a4ec8d2182975be922d2ed ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1761585072 33256 97280e9cae431ddad3b9b8b1e749594c ""
+  "paper.aux" 1761585074 7548 d54ba2d38df8c415efc951eea2bb0df1 "pdflatex"
+  "paper.out" 1761585074 3353 dabb11f2b48e9f73cf9cce8a4488676b "pdflatex"
+  "paper.tex" 1761585072 33256 97280e9cae431ddad3b9b8b1e749594c ""
   (generated)
   "paper.aux"
   "paper.log"
