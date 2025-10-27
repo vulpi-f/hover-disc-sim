@@ -17,20 +17,23 @@
 \usepackage{float}
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 
-\title{Design Methodology for a Dual-Jet Hovering Disc with Concentric Air Curtains:\\
-Model, Non-Dimensionalization, and Physical Assumptions}
-\author{ }
-\date{ }
+\title{Design Methodology for a Hovering Disc with an Annular Air Curtain:\\
+Coupled Cushion-Ground Model and Pressure-Sealing Design Procedure}
+\author{Fabio Vulpi, Ph.D.}
+\date{27.10.2025}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-This paper presents a design-oriented physical model for a hovering disc sustained by two concentric air jets:
-an outer annular jet that forms an aerodynamic curtain to confine the inner flow and an inner jet that maintains the central cushion pressure.
-The analysis uses a low-Mach compressible, axisymmetric core model with an anisotropic Stokes--Darcy closure to approximate the pressure and velocity fields in the cushion region.
-A detailed discussion of the model's assumptions and their physical validity is provided, along with a complete nomenclature of symbols used throughout the work.
+This work presents a physically consistent design and modelling framework for a hovering disc supported by an annular high-velocity air curtain.
+The objective is to generate a central high-pressure cushion capable of sustaining an external load, while the annular jet prevents radial escape of air rather than providing vertical thrust.
+The coupled model includes:
+(i) an axisymmetric, low-Mach compressible core region governed by an anisotropic Darcy-Brinkman formulation, and
+(ii) a momentum-based curtain sub-model acting as a pressure-sealing boundary through a mixed (Robin) condition.
+A step-by-step computational procedure is defined for implementation, including the evaluation of lift, leakage, sealing index, and power.
+The methodology yields a clear basis for sizing and performance assessment of air-cushion hover devices.
 \end{abstract}
 
 \begin{figure}[t]
@@ -54,8 +57,9 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
   \item $\dot{m}_{\mathrm{out}}$ -- air mass flow of outer region.
   \item $\dot{m}_{\mathrm{loss}}$ -- air mass flow exiting internal region.
   \item $H$ -- effective curtain height (equal to $h$ in this study, representing the vertical extent over which the curtain resists leakage).
-  \item $b_0$ -- initial slot thickness of the outer annular jet at injection. $R^{-}=R_{\mathrm{tot}}-b_0$ is its inner radius
-  \item $b(z)$ -- effective local width of the curtain slot or equivalent jet region as a function of $z$ (see rim-pressure model).
+  \item $b_0$ -- slot thickness of the outer annular jet at injection; the jet centreline is located at $R^{-}=R_{\mathrm{tot}}-b_0/2$.
+  \item $b(z)$ -- local width of the curtain slot as a function of $z$ (constant or weakly varying).
+  \item $\varepsilon_g$ -- representative ground roughness used to define the effective sealing gap $h_{\mathrm{eff}} = h - \varepsilon_g$.
 \end{itemize}
 
 \begin{table}[h]
@@ -81,15 +85,15 @@ The geometry follows Fig.~\ref{fig:geometry}, defining the coordinate system and
 \section{Model Overview}
 \label{sec:model-overview}
 
-The cushion region ($0\le r\le R^{-},\ 0\le z\le h$) is filled with air at variable pressure and density (isothermal, low-Mach). 
-The mean flow follows an \emph{anisotropic Darcy--Brinkman} closure (reducing to Stokes--Darcy when $\mu_e\!=\!0$):
+The cushion region ($0\le r\le R^{-},\ 0\le z\le h$) contains the pressurized air responsible for lift generation.
+Under isothermal, low–Mach conditions the mean flow obeys an \emph{anisotropic Darcy–Brinkman} law:
 \begin{equation}
-  u = -\frac{\kappa_r}{\mu}\,\partial_r p \;+\; \frac{\mu_e}{\mu}\,\nabla^2 u,
-  \qquad
-  w = -\frac{\kappa_z}{\mu}\,\partial_z p \;+\; \frac{\mu_e}{\mu}\,\nabla^2 w,
+  u = -\frac{\kappa_r}{\mu}\,\partial_r p , \qquad
+  w = -\frac{\kappa_z}{\mu}\,\partial_z p ,
   \label{eq:darcy_brinkman}
 \end{equation}
-with permeabilities $\kappa_r=\alpha_r h^2$ and $\kappa_z=\alpha_z h^2$ and an effective viscosity $\mu_e=\beta\,\mu$ ($\beta\sim O(1)$) controlling recirculation smoothing near the rim. 
+where $\kappa_r=\alpha_r h^2$ and $\kappa_z=\alpha_z h^2$ represent effective permeabilities in the radial and vertical directions.
+Inertia is neglected provided $Re_c=\rho U_c h/\mu\ll1$; if this limit is exceeded, a Brinkman term or RANS correction may be used.
 Mass conservation and state equation read
 \begin{equation}
   \frac{1}{r}\,\partial_r\!\left(r\rho u\right)+\partial_z(\rho w)=0,
@@ -129,7 +133,7 @@ With \(p_{\rm edge}(z)\) now available, the core model solves:
   \quad
   \rho = \frac{p}{R_g\,T_\infty}, 
 \]
-together with the Darcy–Stokes closure:
+together with the Darcy-Stokes closure:
 \[
   u = -\frac{\kappa_r}{\mu}\,\partial_r p,
   \qquad
@@ -140,7 +144,13 @@ Boundary conditions:
 \begin{itemize}
   \item \(\partial_r p(0,z)=0\) (axis symmetry),
   \item \(\partial_z p(r,0)=\partial_z p(r,h)=0\) (no-normal-flow at ground and disc surface),
-  \item \(p(R^{-},z)=p_{\rm edge}(z)\) (rim coupling to outer jet).
+  \item Mixed Robin sealing condition at \(r=R^{-}\):
+  \[
+    -\,\rho\,\kappa_r\,\partial_r p\big|_{r=R^{-}}
+    = C_{\mathrm{seal}}(z)\,[\,p(R^{-},z)-p_0\,],
+  \]
+  where \(C_{\mathrm{seal}}(z)=\chi\,(\rho_j U_z(z)^2/\mu)(b/H)(1/D_{m,\min})\)
+  includes an empirical factor \(\chi\in[0,1]\) accounting for ground roughness and non-ideal sealing.
 \end{itemize}
 From the computed fields \(p(r,z),\,u(r,z),\,w(r,z)\), the following integrated quantities are evaluated:
 \begin{itemize}
@@ -434,15 +444,40 @@ Vectors show $(\hat u,\,S\hat w)$ for isotropic visual scaling; the pattern refl
   \label{fig:cmap_p}
 \end{figure}
 
+\paragraph{Performance and stability analysis.}
+From the converged solutions the lift–height characteristic $L(h)$ is evaluated to assess static stability.
+A stable hovering point satisfies $dL/dh < 0$ in the neighbourhood of the nominal gap.
+The required jet power is estimated as
+\[
+  \dot W_{\mathrm{jet}} = \frac{1}{2}\dot m_{\mathrm{out}} U_{\mathrm{out}}^2 /(1+K_{\mathrm{turn}}),
+\]
+and the non-dimensional sealing and leakage indices are
+\[
+  \Pi_{\mathrm{seal}} = \frac{\rho_j U_{\mathrm{out}}^2 b}{H p_c},
+  \qquad
+  \Pi_{\mathrm{leak}} = \frac{\dot m_{\mathrm{leak}}}{\rho_0 U_{\mathrm{out}} 2\pi R^{-} b}.
+\]
+These provide quick performance metrics for design optimization.
+
+\section*{Design Procedure Summary}
+\begin{enumerate}
+  \item Specify $W$, $R$, $h$, and air properties $(\rho_0,\mu,T_0)$.
+  \item Compute target cushion pressure $p_c = W/(\pi R^2)$.
+  \item Choose sealing index $\Sigma_{\min}\!\in[3,5]$ and estimate
+        $U_{\mathrm{out}}=\sqrt{\Sigma_{\min} H p_c / (\rho_j b)}$.
+  \item Evaluate $Ma$, $Re_j$ and adjust $(b,H)$ for $Ma<0.3$, $Re_j>2000$.
+  \item Iterate the coupled solver until $|L-W|/W<10^{-3}$ and mass balance error $<10^{-3}$.
+  \item Output: $L(h)$ curve, $\Pi_{\mathrm{seal}}$, $\Pi_{\mathrm{leak}}$, $\dot W_{\mathrm{jet}}$.
+\end{enumerate}
+
 \section{Model Limitations and Planned Extensions}
 \label{sec:model-limitations-and-planned-extensions}
 
-The Darcy--Brinkman closure is an engineering reduction (effective permeability in a
-free flow); $\alpha_r,\alpha_z$ should be calibrated against axisymmetric CFD.
-The make-up jet is not imposed as a local BC in the core; it enters only via the
-mass-balance closure. Thermal effects are neglected ($T=T_\infty$). The bypass parameter
-$\beta$ is defined conceptually but not used yet in the code; it will be included together
-with the automated shooting loop and power estimates.
+The present formulation uses the Darcy–Brinkman reduction as an effective description of the viscous core.
+Coefficients $\alpha_r$ and $\alpha_z$ should be calibrated from axisymmetric CFD or experiments.
+The secondary make-up flow is lumped into the global mass balance rather than as a local inlet.
+Thermal effects are neglected ($T=T_\infty$) and Mach numbers remain below 0.3.
+Future extensions will introduce a steady energy equation, refined wall-jet correlations and the automated lift-matching loop.
 
 \paragraph{Appendix: minimal rationale for the composite rim pressure.}
 Consider a control volume hugging the rim over height $h$ and thickness $O(b)$.
@@ -468,7 +503,7 @@ Sensitivity to this parameter is reported without altering the solver or figures
 \toprule
 Symbol & Description \\ \midrule
 $R_{\mathrm{tot}}$ & Total radius of the disc \\
-$R^{-}$ & Inner radius of the leakage ring ($R^{-}=R_{\mathrm{tot}}-b_0$) \\
+$R^{-}$ & Inner radius of the leakage ring (centreline of jet slot, $R^{-}=R_{\mathrm{tot}}-b_0/2$) \\
 $h$ & Hovering height (disc--ground gap) \\
 $h_{\mathrm{eff}}$ & Effective sealing height at rim \\
 $b_0$ & Slot thickness at injection (plane jet width) \\

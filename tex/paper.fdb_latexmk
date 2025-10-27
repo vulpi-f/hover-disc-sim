@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1761577487.56832 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1761577489.14098 0
+["pdflatex"] 1761581903.6152 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1761581905.21154 0
   "../figs/cmap_pressure.png" 1761577484 69190 61de1139518bc6e7fd616cdcccea8a97 ""
   "../figs/cmap_speed.png" 1761577484 64564 3dd4e7f35a19c901b40ad821c6170311 ""
   "../figs/cmap_ur.png" 1761577485 71333 5b0f7e906c760d1fc4f32ef436f0ed26 ""
@@ -61,6 +61,7 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi10.pfb" 1256929440 30388 702fae6a5f0e6e9c48a1d872b442ffcf ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi8.pfb" 1256929440 30635 833ec815d446ec453a4913fc26d24cbc ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr10.pfb" 1256929440 119235 05e5c8d6d60439433e50047898c2c0e0 ""
+  "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr12.pfb" 1256929440 113634 9384aebdf26f9881e046a4b5574566db ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr17.pfb" 1256929440 119752 1bd8d06e4079df624bf59ce3ad7c9aa6 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr6.pfb" 1256929440 123394 992f5e87d698d9e94717394c62580ea6 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr7.pfb" 1256929440 121145 00b210fbe9efd7ce850c04e64670de9a ""
@@ -141,10 +142,10 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/dicts/translations-basic-dictionary-english.trsl" 1644048522 5588 0c1628daf15f4411ff1f463114c634a3 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1761573243 28437 8abe5d321323db00f25f6283f1aa55af ""
-  "paper.aux" 1761577488 7191 a2adcab0365c0d868db528acb2cd1dbc "pdflatex"
-  "paper.out" 1761577488 3353 dabb11f2b48e9f73cf9cce8a4488676b "pdflatex"
-  "paper.tex" 1761573243 28437 8abe5d321323db00f25f6283f1aa55af ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1761581901 30431 0465744294e3b1f071b27da17421d63f ""
+  "paper.aux" 1761581905 7313 f956cf1af6472a6ede16b25fe2c10d21 "pdflatex"
+  "paper.out" 1761581905 3353 dabb11f2b48e9f73cf9cce8a4488676b "pdflatex"
+  "paper.tex" 1761581901 30431 0465744294e3b1f071b27da17421d63f ""
   (generated)
   "paper.aux"
   "paper.log"
