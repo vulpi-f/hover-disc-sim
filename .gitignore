@@ -16,7 +16,6 @@ env/
 *.out
 *.toc
 *.synctex.gz
-*.pdf
 
 # Plots/results
 figs/*.png
