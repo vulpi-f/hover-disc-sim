@@ -1,0 +1,108 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       regIOobject;
+    location    "constant/polyMesh";
+    object      faceZones;
+    meta
+    {
+        names           3 ( mid6mid70Side0Zone mid6mid70CutFaceZone mid8mid91CutFaceZone );
+    }
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+3
+(mid6mid70Side0Zone
+{
+    type            faceZone;
+    faceLabels      List<label> 8(3 53 62 112 121 171 179 213);
+    flipMap         List<bool> 8{0};
+}
+mid6mid70CutFaceZone
+{
+    type            faceZone;
+    faceLabels      List<label> 
+24
+(
+15
+16
+28
+29
+41
+42
+74
+75
+87
+88
+100
+101
+133
+134
+146
+147
+159
+160
+187
+188
+196
+197
+205
+206
+)
+;
+    flipMap         List<bool> 24{0};
+}
+mid8mid91CutFaceZone
+{
+    type            faceZone;
+    faceLabels      List<label> 
+32
+(
+219
+220
+224
+225
+229
+230
+233
+234
+267
+268
+272
+273
+277
+278
+281
+282
+315
+316
+320
+321
+325
+326
+329
+330
+362
+363
+366
+367
+370
+371
+373
+374
+)
+;
+    flipMap         List<bool> 32{0};
+}
+)
+
+// ************************************************************************* //
