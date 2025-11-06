@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1762255707.742 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1762255708.73221 0
+["pdflatex"] 1762257288.7479 "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" "paper.pdf" "paper" 1762257289.79815 0
   "../figs/schema_geometry.png" 1761055434 58346 19ca1d7578a01d9d8770c4ad6f72c641 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1760973812 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/vulpi/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1760440036 13321623 3fb338287053e28da04db6fc1a036b60 ""
@@ -120,10 +120,10 @@
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/vulpi/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
-  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1762255706 7672 859e1991feb772d5d87c4ce70a84c3f1 ""
-  "paper.aux" 1762255708 1677 68c2ce39973057b13fa70d0ec67034c8 "pdflatex"
-  "paper.out" 1762255708 1249 9749ab1d9ebe71862ea24b45021eaa94 "pdflatex"
-  "paper.tex" 1762255706 7672 859e1991feb772d5d87c4ce70a84c3f1 ""
+  "c:/Users/vulpi/OneDrive/Documenti/Python_Proj/hover-disc-sim/tex/paper.tex" 1762257288 7819 2d293afae827ca417ba25c052518055c ""
+  "paper.aux" 1762257289 1677 68c2ce39973057b13fa70d0ec67034c8 "pdflatex"
+  "paper.out" 1762257289 1249 9749ab1d9ebe71862ea24b45021eaa94 "pdflatex"
+  "paper.tex" 1762257288 7819 2d293afae827ca417ba25c052518055c ""
   (generated)
   "paper.aux"
   "paper.log"

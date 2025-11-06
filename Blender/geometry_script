@@ -1,0 +1,116 @@
+import bpy, bmesh
+from math import pi, cos, sin
+
+# ------------------ Parametri ------------------
+Ri       = 0.25
+b0       = 0.10
+Ro       = Ri + b0
+H        = 0.20
+dz       = 0.05
+nTheta   = 64
+theta_geo= 4        # se == nTheta => 360°, altrimenti wedge
+nRInner  = 2         # anelli tra core e Ri
+nRAnn    = 4         # anelli tra Ri e Ro
+coreFrac = 0.01      # piccolo raggio del core per O-grid
+
+name_all = "domain_unico"
+
+# ------------------ Utilità ------------------
+def safe_remove(obj):
+    if obj and obj.name in bpy.data.objects:
+        me = obj.data
+        bpy.data.objects.remove(obj, do_unlink=True)
+        if me and me.users == 0:
+            bpy.data.meshes.remove(me, do_unlink=True)
+
+def remove_if_exists(name):
+    safe_remove(bpy.data.objects.get(name))
+
+bpy.context.scene.unit_settings.system = 'METRIC'
+bpy.context.scene.unit_settings.scale_length = 1.0
+
+remove_if_exists(name_all)
+
+nLayers = max(1, round(H / dz))
+H_eff   = nLayers * dz
+if abs(H_eff - H) > 1e-12:
+    print(f"[INFO] H non multiplo di dz. Uso H_eff={H_eff:.6f} con {nLayers} layer.")
+
+# ------------------ Primitive ------------------
+def ring_partial(bm, r, z, nTheta, theta_geo):
+    return [bm.verts.new((r*cos(2*pi*k/nTheta), r*sin(2*pi*k/nTheta), z)) for k in range(theta_geo)]
+
+def quad_strip(bm, ring_in, ring_out, wrap):
+    n = len(ring_in)
+    if wrap:
+        for k in range(n):
+            bm.faces.new((ring_in[k], ring_in[(k+1)%n], ring_out[(k+1)%n], ring_out[k]))
+    else:
+        for k in range(n-1):
+            bm.faces.new((ring_in[k], ring_in[k+1], ring_out[k+1], ring_out[k]))
+
+def cap_between_rings(bm, rings, wrap):
+    for i in range(len(rings)-1):
+        quad_strip(bm, rings[i], rings[i+1], wrap)
+
+def add_radial_vertical_faces(bm, prev_rings, curr_rings):
+    n = len(prev_rings[0])
+    for i in range(len(prev_rings) - 1):
+        A0, B0 = prev_rings[i],   prev_rings[i+1]
+        A1, B1 = curr_rings[i],   curr_rings[i+1]
+        for k in range(n):
+            bm.faces.new((A0[k], A1[k], B1[k], B0[k]))
+
+# ------------------ COSTRUTTORE UNICO ------------------
+def make_domain_unico(name, Ri, Ro, dz, nLayers, nTheta, theta_geo, nRInner, nRAnn, coreFrac):
+    theta_geo = max(2, min(theta_geo, nTheta))
+    wrap = (theta_geo == nTheta)
+
+    bm = bmesh.new()
+
+    # --- radii complessivi: core -> Ri (cushion), poi Ri -> Ro (annulus) ---
+    rCore = max(1e-9, coreFrac*Ri)
+    # tra core e Ri: nRInner step (inclusi capi), quindi nRInner+1 raggi contando core
+    radii_cush = [rCore + (Ri - rCore) * i / nRInner for i in range(0, nRInner+1)]
+    # tra Ri e Ro: nRAnn step (inclusi capi), NB: il primo è Ri, ma per evitare doppione saltiamo ri-aggiunta di Ri
+    radii_ann  = [Ri + (Ro - Ri) * i / nRAnn for i in range(1, nRAnn+1)]
+    radii_full = radii_cush + radii_ann  # Ri compare una sola volta
+
+    # --- base (z=0): tappo quad-only tra anelli consecutivi ---
+    z0 = 0.0
+    base_rings = [ring_partial(bm, r, z0, nTheta, theta_geo) for r in radii_full]
+    cap_between_rings(bm, base_rings, wrap)
+
+    # --- estrusione in Z: pareti cilindriche + radiali per chiudere gli esaedri ---
+    prev_rings = base_rings
+    for L in range(1, nLayers+1):
+        z = L * dz
+        curr_rings = []
+        for prev in prev_rings:
+            curr_rings.append([bm.verts.new((v.co.x, v.co.y, z)) for v in prev])
+
+        # pareti cilindriche tra layer
+        for prev, curr in zip(prev_rings, curr_rings):
+            quad_strip(bm, prev, curr, wrap)
+
+        # pareti radiali verticali
+        add_radial_vertical_faces(bm, prev_rings, curr_rings)
+
+        prev_rings = curr_rings
+
+    # --- top cap (z=H_eff) ---
+    cap_between_rings(bm, prev_rings, wrap)
+
+    # oggetto
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+# ------------------ CREA UN SOLO OGGETTO ------------------
+obj = make_domain_unico(name_all, Ri, Ro, dz, nLayers, nTheta, theta_geo, nRInner, nRAnn, coreFrac)
+
+print(f"OK: '{name_all}' — nTheta={nTheta}, theta_geo={theta_geo} ({'full' if theta_geo==nTheta else 'wedge'}), "
+      f"nLayers={nLayers}, dz={dz}, H_eff={H_eff:.6f}")
