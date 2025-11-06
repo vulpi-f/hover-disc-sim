@@ -17,10 +17,6 @@ env/
 *.toc
 *.synctex.gz
 
-# Plots/results
-figs/*.png
-figs/*.json
-
 # OS
 .DS_Store
 Thumbs.db
