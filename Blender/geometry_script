@@ -2,18 +2,34 @@ import bpy, bmesh
 from math import pi, cos, sin
 
 # ------------------ Parametri ------------------
-Ri       = 0.25
-b0       = 0.10
-Ro       = Ri + b0
-H        = 0.20
-dz       = 0.05
-nTheta   = 64
-theta_geo= 4        # se == nTheta => 360°, altrimenti wedge
-nRInner  = 2         # anelli tra core e Ri
-nRAnn    = 4         # anelli tra Ri e Ro
-coreFrac = 0.01      # piccolo raggio del core per O-grid
+Ri        = 0.25
+b0        = 0.05
+Ro        = Ri + b0
+H         = 0.20
+nZ        = 20          # numero di layer in Z
+nTheta    = 64          # risoluzione di riferimento su 360°
+theta_geo = 1           # numero di CELLE del settore (1 => una sola cella in theta)
+nRInner   = 5           # anelli tra core e Ri
+nRAnn     = 2*nRInner   # anelli tra Ri e Ro
+n_Cushion_inlet = 1     # 0 <= n_Cushion_inlet < nRInner
+coreFrac  = 1e-2        # piccolo raggio core per O-grid quad-only
 
-name_all = "domain_unico"
+name_all = "hoover_domain"
+
+# ------------------ Material slots (ordine fisso) ------------------
+# Slot 0 *deve* essere interno, così qualunque faccia non marcata NON finisce in una patch di bordo.
+MAT_ORDER = [
+    "_internal",       # 0 - interno / non-boundary
+    "inlet_cushion",   # 1 - top cap r <= soglia cushion inlet
+    "inlet_annulus",   # 2 - top cap annulus
+    "cushionTopWall",  # 3 - porzione top cushion trasformata in wall
+    "bottomWall",      # 4 - base
+    "outerWall",       # 5 - cilindro esterno
+    "innerAxis",       # 6 - cilindro interno
+    "wedgeLow",        # 7 - piano azimutale a theta_min (solo wedge)
+    "wedgeHigh",       # 8 - piano azimutale a theta_max (solo wedge)
+]
+MAT_IDX = {n:i for i,n in enumerate(MAT_ORDER)}
 
 # ------------------ Utilità ------------------
 def safe_remove(obj):
@@ -31,86 +47,164 @@ bpy.context.scene.unit_settings.scale_length = 1.0
 
 remove_if_exists(name_all)
 
-nLayers = max(1, round(H / dz))
+# Layer in Z
+nLayers = max(1, int(nZ))
+dz      = H / nLayers
 H_eff   = nLayers * dz
 if abs(H_eff - H) > 1e-12:
-    print(f"[INFO] H non multiplo di dz. Uso H_eff={H_eff:.6f} con {nLayers} layer.")
+    print(f"[INFO] H non multiplo esatto: uso H_eff={H_eff:.6f} con {nLayers} layer (dz={dz:.6f}).")
+
+# ------------------ Helper theta ------------------
+def theta_config(nTheta_total, theta_cells):
+    """
+    Ritorna (nVertsPerRing, wrap, theta_span).
+    - wedge (theta_cells < nTheta_total): nVerts = theta_cells + 1, wrap=False, theta_span = 2*pi*(theta_cells/nTheta_total)
+    - full 360 (theta_cells == nTheta_total): nVerts = nTheta_total, wrap=True, theta_span = 2*pi
+    """
+    if theta_cells >= nTheta_total:
+        return max(3, nTheta_total), True, 2*pi
+    else:
+        nVerts = max(2, theta_cells + 1)
+        span   = 2*pi * (theta_cells / nTheta_total)
+        return nVerts, False, span
 
 # ------------------ Primitive ------------------
-def ring_partial(bm, r, z, nTheta, theta_geo):
-    return [bm.verts.new((r*cos(2*pi*k/nTheta), r*sin(2*pi*k/nTheta), z)) for k in range(theta_geo)]
+def ring_partial(bm, r, z, nVerts, wrap, theta_span):
+    verts = []
+    if wrap:
+        for k in range(nVerts):
+            a = 2*pi * k / nVerts
+            verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
+    else:
+        for k in range(nVerts):
+            a = theta_span * k / (nVerts - 1)
+            verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
+    return verts
 
-def quad_strip(bm, ring_in, ring_out, wrap):
+def quad_strip_mat(bm, ring_in, ring_out, wrap, mat_index=None):
+    """
+    Crea quad tra due anelli.
+    Se mat_index è None, assegna esplicitamente _internal per evitare materiale 0 sbagliato.
+    """
+    if mat_index is None:
+        mat_index = MAT_IDX["_internal"]
     n = len(ring_in)
     if wrap:
         for k in range(n):
-            bm.faces.new((ring_in[k], ring_in[(k+1)%n], ring_out[(k+1)%n], ring_out[k]))
+            f = bm.faces.new((ring_in[k], ring_in[(k+1)%n], ring_out[(k+1)%n], ring_out[k]))
+            f.material_index = mat_index
     else:
         for k in range(n-1):
-            bm.faces.new((ring_in[k], ring_in[k+1], ring_out[k+1], ring_out[k]))
+            f = bm.faces.new((ring_in[k], ring_in[k+1], ring_out[k+1], ring_out[k]))
+            f.material_index = mat_index
 
-def cap_between_rings(bm, rings, wrap):
+def cap_between_rings_with_mat(bm, rings, wrap, mat_idx_per_i):
     for i in range(len(rings)-1):
-        quad_strip(bm, rings[i], rings[i+1], wrap)
+        quad_strip_mat(bm, rings[i], rings[i+1], wrap, mat_idx_per_i[i])
 
-def add_radial_vertical_faces(bm, prev_rings, curr_rings):
+def add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap):
+    """
+    Pareti radiali verticali tra layer (piani θ = costante).
+    In wedge: k=0 -> wedgeLow, k=nVerts-1 -> wedgeHigh. Altre radiali -> _internal.
+    In full: tutto -> _internal.
+    """
     n = len(prev_rings[0])
     for i in range(len(prev_rings) - 1):
         A0, B0 = prev_rings[i],   prev_rings[i+1]
         A1, B1 = curr_rings[i],   curr_rings[i+1]
         for k in range(n):
-            bm.faces.new((A0[k], A1[k], B1[k], B0[k]))
+            f = bm.faces.new((A0[k], A1[k], B1[k], B0[k]))
+            if not wrap:
+                if k == 0:
+                    f.material_index = MAT_IDX["wedgeLow"]
+                elif k == n-1:
+                    f.material_index = MAT_IDX["wedgeHigh"]
+                else:
+                    f.material_index = MAT_IDX["_internal"]
+            else:
+                f.material_index = MAT_IDX["_internal"]
 
-# ------------------ COSTRUTTORE UNICO ------------------
-def make_domain_unico(name, Ri, Ro, dz, nLayers, nTheta, theta_geo, nRInner, nRAnn, coreFrac):
-    theta_geo = max(2, min(theta_geo, nTheta))
-    wrap = (theta_geo == nTheta)
+# ------------------ COSTRUTTORE UNICO + TAG MATERIALI ------------------
+def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers, nTheta_total, theta_cells, nRInner, nRAnn, n_Cushion_inlet, coreFrac):
+    assert 0 <= n_Cushion_inlet < nRInner, "n_Cushion_inlet deve essere in [0, nRInner-1]"
+    nVertsTheta, wrap, theta_span = theta_config(nTheta_total, theta_cells)
 
     bm = bmesh.new()
 
-    # --- radii complessivi: core -> Ri (cushion), poi Ri -> Ro (annulus) ---
+    # radii: core -> Ri (cushion), poi Ri -> Ro (annulus)
     rCore = max(1e-9, coreFrac*Ri)
-    # tra core e Ri: nRInner step (inclusi capi), quindi nRInner+1 raggi contando core
-    radii_cush = [rCore + (Ri - rCore) * i / nRInner for i in range(0, nRInner+1)]
-    # tra Ri e Ro: nRAnn step (inclusi capi), NB: il primo è Ri, ma per evitare doppione saltiamo ri-aggiunta di Ri
-    radii_ann  = [Ri + (Ro - Ri) * i / nRAnn for i in range(1, nRAnn+1)]
-    radii_full = radii_cush + radii_ann  # Ri compare una sola volta
+    radii_cush = [rCore + (Ri - rCore) * i / nRInner for i in range(0, nRInner+1)]  # include Ri
+    radii_ann  = [Ri + (Ro - Ri) * i / nRAnn for i in range(1, nRAnn+1)]            # salta Ri
+    radii_full = radii_cush + radii_ann
 
-    # --- base (z=0): tappo quad-only tra anelli consecutivi ---
+    # strip con base a Ri (tra i e i+1) -> indice separazione cushion/annulus
+    i_Ri = len(radii_cush) - 1  # = nRInner
+
+    # --- base (z=0): tutto bottomWall ---
     z0 = 0.0
-    base_rings = [ring_partial(bm, r, z0, nTheta, theta_geo) for r in radii_full]
-    cap_between_rings(bm, base_rings, wrap)
+    base_rings = [ring_partial(bm, r, z0, nVertsTheta, wrap, theta_span) for r in radii_full]
+    mat_bottom_per_i = [MAT_IDX["bottomWall"]] * (len(base_rings)-1)
+    cap_between_rings_with_mat(bm, base_rings, wrap, mat_bottom_per_i)
 
-    # --- estrusione in Z: pareti cilindriche + radiali per chiudere gli esaedri ---
+    # --- estrusione in Z: pareti cilindriche + radiali ---
     prev_rings = base_rings
     for L in range(1, nLayers+1):
-        z = L * dz
+        z = (H / nLayers) * L
         curr_rings = []
         for prev in prev_rings:
             curr_rings.append([bm.verts.new((v.co.x, v.co.y, z)) for v in prev])
 
-        # pareti cilindriche tra layer
-        for prev, curr in zip(prev_rings, curr_rings):
-            quad_strip(bm, prev, curr, wrap)
+        # cilindriche: marchiamo SOLO inner/outer; le altre -> _internal
+        for j, (prev, curr) in enumerate(zip(prev_rings, curr_rings)):
+            if j == 0:
+                quad_strip_mat(bm, prev, curr, wrap, MAT_IDX["innerAxis"])
+            elif j == len(prev_rings)-1:
+                quad_strip_mat(bm, prev, curr, wrap, MAT_IDX["outerWall"])
+            else:
+                quad_strip_mat(bm, prev, curr, wrap, MAT_IDX["_internal"])
 
-        # pareti radiali verticali
-        add_radial_vertical_faces(bm, prev_rings, curr_rings)
+        # radiali verticali (wedge ai bordi, interno -> _internal)
+        add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap)
 
         prev_rings = curr_rings
 
-    # --- top cap (z=H_eff) ---
-    cap_between_rings(bm, prev_rings, wrap)
+    # --- top cap (z=H): split in tre zone ---
+    # i in [0 .. nRInner-1]  --> cushion (diviso in inlet vs wall)
+    # i in [nRInner .. end]  --> annulus inlet
+    mat_top_per_i = []
+    last_strip_index = len(prev_rings) - 2
+    for i in range(last_strip_index + 1):
+        if i < i_Ri:
+            # top cushion
+            if i < n_Cushion_inlet:
+                mat_top_per_i.append(MAT_IDX["inlet_cushion"])   # ingresso cushion (normale z)
+            else:
+                mat_top_per_i.append(MAT_IDX["cushionTopWall"])  # tappo cushion (normale z)
+        else:
+            mat_top_per_i.append(MAT_IDX["inlet_annulus"])       # ingresso annulus (normale z)
 
-    # oggetto
+    cap_between_rings_with_mat(bm, prev_rings, wrap, mat_top_per_i)
+
+    # --- crea mesh/oggetto ---
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
     obj = bpy.data.objects.new(name, me)
+
+    for mat_name in MAT_ORDER:
+        mat = bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name)
+        obj.data.materials.append(mat)
+
     bpy.context.collection.objects.link(obj)
-    return obj
+    return obj, nVertsTheta, wrap, theta_span
 
-# ------------------ CREA UN SOLO OGGETTO ------------------
-obj = make_domain_unico(name_all, Ri, Ro, dz, nLayers, nTheta, theta_geo, nRInner, nRAnn, coreFrac)
+# ------------------ CREA OGGETTO ------------------
+obj, nVertsTheta, wrap, theta_span = make_domain_unico_with_materials(
+    name_all, Ri, Ro, H, nLayers, nTheta, theta_geo, nRInner, nRAnn, n_Cushion_inlet, coreFrac
+)
 
-print(f"OK: '{name_all}' — nTheta={nTheta}, theta_geo={theta_geo} ({'full' if theta_geo==nTheta else 'wedge'}), "
-      f"nLayers={nLayers}, dz={dz}, H_eff={H_eff:.6f}")
+print(f"OK: '{name_all}' — H={H}, nZ={nLayers}, dz={H/nLayers:.6f}")
+print(f"theta: cells={theta_geo}, verts/anello={nVertsTheta}, mode={'full-360 wrap' if wrap else 'wedge'}, span={theta_span*180/pi:.4f} deg")
+print("Material slots:", MAT_ORDER)
+print("Tip: Edit Mode → Select by Material → crea/Assign le patch SwiftBlock. "
+      "NON creare patch per '_internal'.")
