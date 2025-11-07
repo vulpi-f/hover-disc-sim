@@ -14,11 +14,18 @@ dimensions      [0 1 -1 0 0 0 0];
 internalField   uniform (0 0 0);
 boundaryField
 {
-  inlet_annulus   { type fixedValue; value uniform (0 0 -Vann); } // metti verso normale reale
-  inlet_cushion   { type fixedValue; value uniform (0 0 -Vcush); }
-  bottomWall      { type fixedValue; value uniform (0 0 0); }
-  outerWall       { type pressureInletOutletVelocity; value uniform (0 0 0); }  // “ambiente”
-  innerAxis       { type symmetryPlane; }   // se è asse/“slip”
-  wedgeLow        { type wedge; }
-  wedgeHigh       { type wedge; }
+    inlet_cushion   { type fixedValue; value uniform (0 0 -5); }   // esempio: -z in ingresso
+    inlet_annulus   { type fixedValue; value uniform (0 0 -50); }  // esempio: getto più veloce
+    cushionTopWall  { type fixedValue; value uniform (0 0 0); }    // top chiuso nel cuscino
+    bottomWall      { type fixedValue; value uniform (0 0 0); }
+    innerAxis       { type symmetryPlane; }
+    wedgeLow        { type wedge; }
+    wedgeHigh       { type wedge; }
+
+    outerWall
+    {
+    type        inletOutlet;
+    inletValue  uniform (0 0 0);
+    value       uniform (0 0 0);
+    }
 }

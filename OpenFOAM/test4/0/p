@@ -12,11 +12,13 @@ dimensions      [0 2 -2 0 0 0 0];
 internalField   uniform 0;
 boundaryField
 {
-  inlet_annulus   { type zeroGradient; }
-  inlet_cushion   { type zeroGradient; }
-  bottomWall      { type zeroGradient; }
-  outerWall       { type freestreamPressure; } // oppure fixedValue uniform 0;
-  innerAxis       { type symmetryPlane; }
-  wedgeLow        { type wedge; }
-  wedgeHigh       { type wedge; }
+    inlet_cushion     { type zeroGradient; }
+    inlet_annulus     { type zeroGradient; }
+    cushionTopWall    { type zeroGradient; }
+    bottomWall        { type zeroGradient; }
+    innerAxis         { type symmetryPlane; }
+    wedgeLow          { type wedge; }
+    wedgeHigh         { type wedge; }
+
+    outerWall { type zeroGradient; } 
 }
