@@ -1,5 +1,5 @@
 import bpy, bmesh
-from math import pi, cos, sin
+from math import pi, cos, sin, tanh
 
 # ------------------ Parametri ------------------
 Ri             = 0.25
@@ -16,6 +16,14 @@ nRInner        = 5            # anelli tra core e Ri
 nRAnn          = 2*nRInner    # anelli tra Ri e Ro
 n_Cushion_inlet = 1           # 0 <= n_Cushion_inlet < nRInner
 coreFrac       = 1e-2         # piccolo raggio core per O-grid quad-only
+
+# >>> NUOVO: controlli infittimento <<<
+# kZ        : infittimento in Z verso z=0 (0=uniforme, >0 più fitto in basso)
+# kR_cush   : infittimento radiale nel cushion verso Ri
+# kR_ann    : infittimento radiale nell'annulus verso Ri
+kZ            = 2.0
+kR_cush       = 2.0
+kR_ann        = 2.0
 
 name_all = "hoover_domain"
 
@@ -45,6 +53,30 @@ def safe_remove(obj):
 def remove_if_exists(name):
     safe_remove(bpy.data.objects.get(name))
 
+# >>> NUOVO: funzione di clustering [0..1] -> [0..1]
+def cluster01(n, k, toward=1):
+    """
+    Restituisce n+1 posizioni in [0,1] con infittimento controllato da k>=0.
+    toward=1  -> infittisce verso 1 (estremo alto)
+    toward=0  -> infittisce verso 0 (estremo basso)
+    k=0       -> distribuzione lineare uniforme
+    Mappa: f(s) = tanh(k*s)/tanh(k) (o simmetrica) per s in [0,1]
+    """
+    if n <= 0:
+        return [0.0]
+    if k <= 0.0:
+        return [i/n for i in range(n+1)]
+    out = []
+    for i in range(n+1):
+        s = i / n
+        if toward == 1:
+            val = tanh(k * s) / tanh(k)
+        else:
+            # cluster verso 0 ⇒ mappa simmetrica
+            val = 1.0 - tanh(k * (1.0 - s)) / tanh(k)
+        out.append(val)
+    return out
+
 bpy.context.scene.unit_settings.system = 'METRIC'
 bpy.context.scene.unit_settings.scale_length = 1.0
 
@@ -52,10 +84,11 @@ remove_if_exists(name_all)
 
 # Layer in Z
 nLayers = max(1, int(nZ))
-dz      = H / nLayers
-H_eff   = nLayers * dz
-if abs(H_eff - H) > 1e-12:
-    print(f"[INFO] H non multiplo esatto: uso H_eff={H_eff:.6f} con {nLayers} layer (dz={dz:.6f}).")
+dz      = H / nLayers  # solo per stampa
+
+# >>> NUOVO: livelli Z non uniformi (cluster verso z=0)
+_z01 = cluster01(nLayers, kZ, toward=0)  # toward=0 -> più denso vicino a z=0
+z_levels = [H * t for t in _z01]         # lunghezza nLayers+1; z_levels[0]=0, z_levels[-1]=H
 
 # ------------------ Helper theta (NUOVO in gradi) ------------------
 def theta_config_from_degs(alpha_deg, theta_geo_deg):
@@ -157,7 +190,9 @@ def add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap):
 # ------------------ COSTRUTTORE UNICO + TAG MATERIALI ------------------
 def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers,
                                      alpha_deg, theta_geo_deg,
-                                     nRInner, nRAnn, n_Cushion_inlet, coreFrac):
+                                     nRInner, nRAnn, n_Cushion_inlet, coreFrac,
+                                     # >>> NUOVO: passaggio parametri clustering <<<
+                                     kZ, kR_cush, kR_ann):
     assert 0 <= n_Cushion_inlet < nRInner, "n_Cushion_inlet deve essere in [0, nRInner-1]"
 
     nVertsTheta, wrap, theta_span, a0, nSectors, eff_span_deg = theta_config_from_degs(alpha_deg, theta_geo_deg)
@@ -166,8 +201,16 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers,
 
     # radii: core -> Ri (cushion), poi Ri -> Ro (annulus)
     rCore = max(1e-9, coreFrac*Ri)
-    radii_cush = [rCore + (Ri - rCore) * i / nRInner for i in range(0, nRInner+1)]  # include Ri
-    radii_ann  = [Ri + (Ro - Ri) * i / nRAnn for i in range(1, nRAnn+1)]            # salta Ri
+
+    # >>> NUOVO: liste r con infittimento vicino a Ri <<<
+    # cushion: cluster verso 1 (Ri)
+    _rc = cluster01(nRInner, kR_cush, toward=1)            # [0..1]
+    radii_cush = [rCore + (Ri - rCore) * t for t in _rc]   # include Ri (ultimo)
+
+    # annulus: cluster verso 0 (Ri)
+    _ra = cluster01(nRAnn, kR_ann, toward=0)               # [0..1], 0=Ri
+    radii_ann  = [Ri + (Ro - Ri) * t for t in _ra][1:]     # salta Ri (t=0)
+
     radii_full = radii_cush + radii_ann
 
     # strip con base a Ri (tra i e i+1) -> indice separazione cushion/annulus
@@ -181,8 +224,10 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers,
 
     # --- estrusione in Z: pareti cilindriche + radiali ---
     prev_rings = base_rings
+
+    # >>> NUOVO: uso livelli Z non uniformi
     for L in range(1, nLayers+1):
-        z = (H / nLayers) * L
+        z = z_levels[L]
         curr_rings = []
         for prev in prev_rings:
             curr_rings.append([bm.verts.new((v.co.x, v.co.y, z)) for v in prev])
@@ -235,13 +280,16 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers,
 obj, nVertsTheta, wrap, theta_span, a0, nSectors, eff_span_deg = make_domain_unico_with_materials(
     name_all, Ri, Ro, H, nLayers,
     alpha_deg, theta_geo_deg,
-    nRInner, nRAnn, n_Cushion_inlet, coreFrac
+    nRInner, nRAnn, n_Cushion_inlet, coreFrac,
+    # >>> NUOVO: passi i tre parametri di infittimento <<<
+    kZ, kR_cush, kR_ann
 )
 
-print(f"OK: '{name_all}' — H={H}, nZ={nLayers}, dz={H/nLayers:.6f}")
+print(f"OK: '{name_all}' — H={H}, nZ={nLayers}, dz_media={H/nLayers:.6f}")
 print(f"alpha = {alpha_deg:.6f} deg | theta_geo = {theta_geo_deg:.6f} deg")
 print(f"eff_span = {eff_span_deg:.6f} deg | nSectors = {nSectors} | mode = {'full-360 wrap' if wrap else 'wedge'}")
 print(f"theta: verts/anello = {nVertsTheta}, a0 = {a0*180/pi:.6f} deg, span = {theta_span*180/pi:.6f} deg")
 print("Material slots:", MAT_ORDER)
 print("Tip: Edit Mode → Select by Material → crea/Assign le patch SwiftBlock. "
       "NON creare patch per '_internal'.")
+print(f"[INFO] Clustering: kZ={kZ} (verso z=0), kR_cush={kR_cush} (verso Ri nel cushion), kR_ann={kR_ann} (verso Ri nell'annulus)")
