@@ -25,12 +25,8 @@ boundaryField
 
     innerAxis       { type symmetry; }
 
-    // A) se in U usi freestream:
     outerWall
     {
         type            zeroGradient;
     }
-
-    // B) (alternativa con inletOutlet in U):
-    // outerWall { type zeroGradient; }
 }
