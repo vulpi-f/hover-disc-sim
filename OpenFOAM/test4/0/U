@@ -1,0 +1,24 @@
+/*--------------------------------*- C++ -*----------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+addLayers
+;
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform (0 0 0);
+boundaryField
+{
+  inlet_annulus   { type fixedValue; value uniform (0 0 -Vann); } // metti verso normale reale
+  inlet_cushion   { type fixedValue; value uniform (0 0 -Vcush); }
+  bottomWall      { type fixedValue; value uniform (0 0 0); }
+  outerWall       { type pressureInletOutletVelocity; value uniform (0 0 0); }  // “ambiente”
+  innerAxis       { type symmetryPlane; }   // se è asse/“slip”
+  wedgeLow        { type wedge; }
+  wedgeHigh       { type wedge; }
+}

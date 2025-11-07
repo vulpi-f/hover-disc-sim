@@ -1,0 +1,22 @@
+/*--------------------------------*- C++ -*----------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+dimensions      [0 2 -2 0 0 0 0];
+internalField   uniform 0;
+boundaryField
+{
+  inlet_annulus   { type zeroGradient; }
+  inlet_cushion   { type zeroGradient; }
+  bottomWall      { type zeroGradient; }
+  outerWall       { type freestreamPressure; } // oppure fixedValue uniform 0;
+  innerAxis       { type symmetryPlane; }
+  wedgeLow        { type wedge; }
+  wedgeHigh       { type wedge; }
+}
