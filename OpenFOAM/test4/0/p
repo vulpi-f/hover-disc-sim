@@ -28,8 +28,7 @@ boundaryField
     // A) se in U usi freestream:
     outerWall
     {
-        type            freestream;
-        freestreamValue uniform 0;
+        type            zeroGradient;
     }
 
     // B) (alternativa con inletOutlet in U):

@@ -23,15 +23,9 @@ boundaryField
 
     innerAxis       { type symmetry; }         // << match con patch "symmetry"
 
-    // Far-field “aperto”: scegli una delle due opzioni:
-
-    // A) freestream:
     outerWall
     {
-        type            freestream;
-        freestreamValue uniform (0 0 0);
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
     }
-
-    // B) (alternativa) inletOutlet + zeroGradient su p:
-    // outerWall { type inletOutlet; inletValue uniform (0 0 0); value uniform (0 0 0); }
 }
