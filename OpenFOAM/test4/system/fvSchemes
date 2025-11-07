@@ -13,10 +13,16 @@ ddtSchemes
     default         steadyState;
 }
 
+gradSchemes
+{
+    default         Gauss linear;
+    grad(U)         cellLimited Gauss linear 1;
+}
+
 divSchemes
 {
     div(phi,U)      bounded Gauss upwind;
-    div(phi,p)      Gauss linear;          // non usato direttamente
+    div(phi,p)      Gauss linear;
     div((nuEff*dev(T(grad(U))))) Gauss linear;
 }
 
@@ -40,5 +46,6 @@ fluxRequired
     default         no;
     p;
 }
+
 
 // ************************************************************************* //

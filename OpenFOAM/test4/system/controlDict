@@ -12,35 +12,24 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     simpleFoam;   // steady incomprimibile
+application     simpleFoam;
+
 startFrom       startTime;
 startTime       0;
+
 stopAt          endTime;
-endTime         2000;         // o finché converge
-deltaT          1;            // fittizio per steady; è nIter outer PIMPLE
+endTime         2000;
+
+deltaT          1;
+
 writeControl    timeStep;
 writeInterval   200;
-purgeWrite      0;
-writeFormat     ascii;
-writePrecision  7;
-writeCompression off;
-timeFormat      general;
-timePrecision   6;
-runTimeModifiable yes;
+
+purgeWrite      3;
 
 functions
 {
-    cushionP_avg
-    {
-        type            patchAverage;
-        libs            ("libfieldFunctionObjects.so");
-        enabled         true;
-        regionType      patch;
-        name            cushionTopWall;  // metti il nome reale del patch
-        fields          (p);
-        writeControl    timeStep;
-        writeInterval   10;
-    }
+    includeFunc residuals;
 }
 
 
