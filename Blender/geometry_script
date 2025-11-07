@@ -100,6 +100,10 @@ def ring_partial(bm, r, z, nVerts, wrap, theta_span, a0=0.0):
       - se wrap=True: nVerts punti equispaziati su 360° (theta_span=2*pi), inizia da a0
       - se wrap=False: nVerts punti da a0 a a0+theta_span, inclusi i due estremi
     """
+    theta_low  = -0.5*theta_span
+    theta_high =  0.5*theta_span
+    cL, sL = cos(theta_low),  sin(theta_low)
+    cH, sH = cos(theta_high), sin(theta_high)
     verts = []
     if wrap:
         for k in range(nVerts):
@@ -107,8 +111,12 @@ def ring_partial(bm, r, z, nVerts, wrap, theta_span, a0=0.0):
             verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
     else:
         for k in range(nVerts):
-            a = a0 + theta_span * k / (nVerts - 1)
-            verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
+            if k == 0:       aC, aS = cL, sL
+            elif k == nVerts-1: aC, aS = cH, sH
+            else:
+                a = theta_low + (theta_span)*(k/(nVerts-1))
+                aC, aS = cos(a), sin(a)
+            verts.append(bm.verts.new((r*aC, r*aS, z)))
     return verts
 
 def quad_strip_mat(bm, ring_in, ring_out, wrap, mat_index=None):
