@@ -10,7 +10,7 @@ nZ             = 20           # numero di layer in Z
 
 # >>> NUOVO: definizione angolare in gradi <<<
 alpha_deg      = 2.8125       # piccolo angolo del singolo settore (esempio)
-theta_geo_deg  = alpha_deg       # estensione geometrica totale (alpha_deg <= theta_geo_deg <= 360)
+theta_geo_deg  = alpha_deg    # estensione geometrica totale (alpha_deg <= theta_geo_deg <= 360)
 
 nRInner        = 5            # anelli tra core e Ri
 nRAnn          = 2*nRInner    # anelli tra Ri e Ro
