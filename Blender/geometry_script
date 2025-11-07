@@ -2,17 +2,20 @@ import bpy, bmesh
 from math import pi, cos, sin
 
 # ------------------ Parametri ------------------
-Ri        = 0.25
-b0        = 0.05
-Ro        = Ri + b0
-H         = 0.20
-nZ        = 20          # numero di layer in Z
-nTheta    = 64          # risoluzione di riferimento su 360°
-theta_geo = 1           # numero di CELLE del settore (1 => una sola cella in theta)
-nRInner   = 5           # anelli tra core e Ri
-nRAnn     = 2*nRInner   # anelli tra Ri e Ro
-n_Cushion_inlet = 1     # 0 <= n_Cushion_inlet < nRInner
-coreFrac  = 1e-2        # piccolo raggio core per O-grid quad-only
+Ri             = 0.25
+b0             = 0.05
+Ro             = Ri + b0
+H              = 0.20
+nZ             = 20           # numero di layer in Z
+
+# >>> NUOVO: definizione angolare in gradi <<<
+alpha_deg      = 2.8125       # piccolo angolo del singolo settore (esempio)
+theta_geo_deg  = alpha_deg       # estensione geometrica totale (alpha_deg <= theta_geo_deg <= 360)
+
+nRInner        = 5            # anelli tra core e Ri
+nRAnn          = 2*nRInner    # anelli tra Ri e Ro
+n_Cushion_inlet = 1           # 0 <= n_Cushion_inlet < nRInner
+coreFrac       = 1e-2         # piccolo raggio core per O-grid quad-only
 
 name_all = "hoover_domain"
 
@@ -54,30 +57,57 @@ H_eff   = nLayers * dz
 if abs(H_eff - H) > 1e-12:
     print(f"[INFO] H non multiplo esatto: uso H_eff={H_eff:.6f} con {nLayers} layer (dz={dz:.6f}).")
 
-# ------------------ Helper theta ------------------
-def theta_config(nTheta_total, theta_cells):
+# ------------------ Helper theta (NUOVO in gradi) ------------------
+def theta_config_from_degs(alpha_deg, theta_geo_deg):
     """
-    Ritorna (nVertsPerRing, wrap, theta_span).
-    - wedge (theta_cells < nTheta_total): nVerts = theta_cells + 1, wrap=False, theta_span = 2*pi*(theta_cells/nTheta_total)
-    - full 360 (theta_cells == nTheta_total): nVerts = nTheta_total, wrap=True, theta_span = 2*pi
+    Restituisce:
+      - nVertsPerRing (punti per anello),
+      - wrap (bool: True se 360° pieni),
+      - theta_span (radians), ampiezza effettiva totale,
+      - a0 (radians), angolo iniziale (centrato intorno a 0)
+      - nSectors (numero di settori; 1 => semplice wedge)
+    Regole:
+      - nSectors = round(theta_geo_deg / alpha_deg), minimo 1
+      - eff_span = min(360, nSectors * alpha_deg)
+      - wrap = True se eff_span == 360
+      - Un settore ha 1 cella in theta. Se wrap:
+          nVerts = nSectors   (ciclo chiuso)
+        else:
+          nVerts = nSectors+1 (aperto, con due bordi wedge)
+      - Viene centrato in [-eff_span/2, +eff_span/2] rispetto a 0°
     """
-    if theta_cells >= nTheta_total:
-        return max(3, nTheta_total), True, 2*pi
+    assert alpha_deg > 0.0, "alpha_deg dev'essere > 0"
+    theta_geo_deg = max(alpha_deg, min(360.0, float(theta_geo_deg)))
+    nSectors = max(1, int(round(theta_geo_deg / alpha_deg)))
+    eff_span_deg = min(360.0, nSectors * alpha_deg)
+
+    wrap = abs(eff_span_deg - 360.0) < 1e-9
+    if wrap:
+        nVerts = nSectors
+        a0_deg = -180.0     # arbitrario: centrato su 0, ma fa il giro completo
     else:
-        nVerts = max(2, theta_cells + 1)
-        span   = 2*pi * (theta_cells / nTheta_total)
-        return nVerts, False, span
+        nVerts = nSectors + 1
+        a0_deg = -0.5 * eff_span_deg
+
+    theta_span = eff_span_deg * pi/180.0
+    a0 = a0_deg * pi/180.0
+    return nVerts, wrap, theta_span, a0, nSectors, eff_span_deg
 
 # ------------------ Primitive ------------------
-def ring_partial(bm, r, z, nVerts, wrap, theta_span):
+def ring_partial(bm, r, z, nVerts, wrap, theta_span, a0=0.0):
+    """
+    Crea un anello parziale:
+      - se wrap=True: nVerts punti equispaziati su 360° (theta_span=2*pi), inizia da a0
+      - se wrap=False: nVerts punti da a0 a a0+theta_span, inclusi i due estremi
+    """
     verts = []
     if wrap:
         for k in range(nVerts):
-            a = 2*pi * k / nVerts
+            a = a0 + 2*pi * k / nVerts
             verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
     else:
         for k in range(nVerts):
-            a = theta_span * k / (nVerts - 1)
+            a = a0 + theta_span * k / (nVerts - 1)
             verts.append(bm.verts.new((r*cos(a), r*sin(a), z)))
     return verts
 
@@ -105,8 +135,8 @@ def cap_between_rings_with_mat(bm, rings, wrap, mat_idx_per_i):
 def add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap):
     """
     Pareti radiali verticali tra layer (piani θ = costante).
-    In wedge: k=0 -> wedgeLow, k=nVerts-1 -> wedgeHigh. Altre radiali -> _internal.
-    In full: tutto -> _internal.
+    In wedge multi-settore: k=0 -> wedgeLow, k=nVerts-1 -> wedgeHigh. Altre radiali -> _internal.
+    In full 360 wrap: tutte -> _internal.
     """
     n = len(prev_rings[0])
     for i in range(len(prev_rings) - 1):
@@ -125,9 +155,12 @@ def add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap):
                 f.material_index = MAT_IDX["_internal"]
 
 # ------------------ COSTRUTTORE UNICO + TAG MATERIALI ------------------
-def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers, nTheta_total, theta_cells, nRInner, nRAnn, n_Cushion_inlet, coreFrac):
+def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers,
+                                     alpha_deg, theta_geo_deg,
+                                     nRInner, nRAnn, n_Cushion_inlet, coreFrac):
     assert 0 <= n_Cushion_inlet < nRInner, "n_Cushion_inlet deve essere in [0, nRInner-1]"
-    nVertsTheta, wrap, theta_span = theta_config(nTheta_total, theta_cells)
+
+    nVertsTheta, wrap, theta_span, a0, nSectors, eff_span_deg = theta_config_from_degs(alpha_deg, theta_geo_deg)
 
     bm = bmesh.new()
 
@@ -142,7 +175,7 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers, nTheta_total, the
 
     # --- base (z=0): tutto bottomWall ---
     z0 = 0.0
-    base_rings = [ring_partial(bm, r, z0, nVertsTheta, wrap, theta_span) for r in radii_full]
+    base_rings = [ring_partial(bm, r, z0, nVertsTheta, wrap, theta_span, a0) for r in radii_full]
     mat_bottom_per_i = [MAT_IDX["bottomWall"]] * (len(base_rings)-1)
     cap_between_rings_with_mat(bm, base_rings, wrap, mat_bottom_per_i)
 
@@ -163,7 +196,7 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers, nTheta_total, the
             else:
                 quad_strip_mat(bm, prev, curr, wrap, MAT_IDX["_internal"])
 
-        # radiali verticali (wedge ai bordi, interno -> _internal)
+        # radiali verticali (wedge ai bordi estremi; interni -> _internal)
         add_radial_vertical_faces(bm, prev_rings, curr_rings, wrap)
 
         prev_rings = curr_rings
@@ -196,15 +229,19 @@ def make_domain_unico_with_materials(name, Ri, Ro, H, nLayers, nTheta_total, the
         obj.data.materials.append(mat)
 
     bpy.context.collection.objects.link(obj)
-    return obj, nVertsTheta, wrap, theta_span
+    return obj, nVertsTheta, wrap, theta_span, a0, nSectors, eff_span_deg
 
 # ------------------ CREA OGGETTO ------------------
-obj, nVertsTheta, wrap, theta_span = make_domain_unico_with_materials(
-    name_all, Ri, Ro, H, nLayers, nTheta, theta_geo, nRInner, nRAnn, n_Cushion_inlet, coreFrac
+obj, nVertsTheta, wrap, theta_span, a0, nSectors, eff_span_deg = make_domain_unico_with_materials(
+    name_all, Ri, Ro, H, nLayers,
+    alpha_deg, theta_geo_deg,
+    nRInner, nRAnn, n_Cushion_inlet, coreFrac
 )
 
 print(f"OK: '{name_all}' — H={H}, nZ={nLayers}, dz={H/nLayers:.6f}")
-print(f"theta: cells={theta_geo}, verts/anello={nVertsTheta}, mode={'full-360 wrap' if wrap else 'wedge'}, span={theta_span*180/pi:.4f} deg")
+print(f"alpha = {alpha_deg:.6f} deg | theta_geo = {theta_geo_deg:.6f} deg")
+print(f"eff_span = {eff_span_deg:.6f} deg | nSectors = {nSectors} | mode = {'full-360 wrap' if wrap else 'wedge'}")
+print(f"theta: verts/anello = {nVertsTheta}, a0 = {a0*180/pi:.6f} deg, span = {theta_span*180/pi:.6f} deg")
 print("Material slots:", MAT_ORDER)
 print("Tip: Edit Mode → Select by Material → crea/Assign le patch SwiftBlock. "
       "NON creare patch per '_internal'.")
