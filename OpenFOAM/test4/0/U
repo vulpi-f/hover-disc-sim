@@ -14,18 +14,13 @@ dimensions      [0 1 -1 0 0 0 0];
 internalField   uniform (0 0 0);
 boundaryField
 {
-    inlet_cushion   { type fixedValue; value uniform (0 0 -5); }   // esempio: -z in ingresso
-    inlet_annulus   { type fixedValue; value uniform (0 0 -50); }  // esempio: getto più veloce
-    cushionTopWall  { type fixedValue; value uniform (0 0 0); }    // top chiuso nel cuscino
-    bottomWall      { type fixedValue; value uniform (0 0 0); }
-    innerAxis       { type symmetryPlane; }
+    inlet_annulus   { type fixedValue; value uniform (0 0 -50); }
+    inlet_cushion   { type fixedValue; value uniform (0 0 -5); }
+    cushionTopWall  { type noSlip; }
+    bottomWall      { type noSlip; }
     wedgeLow        { type wedge; }
     wedgeHigh       { type wedge; }
 
-    outerWall
-    {
-    type        inletOutlet;
-    inletValue  uniform (0 0 0);
-    value       uniform (0 0 0);
-    }
+    innerAxis       { type symmetry; }          // <<-- COERENTE con patch "symmetry"
+    outerWall       { type freestream; freestreamValue uniform (0 0 0); }
 }
