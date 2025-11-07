@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+8
+(
+    inlet_cushion
+    {
+        type            patch;
+        nFaces          100;
+        startFace       866500;
+    }
+    inlet_annulus
+    {
+        type            patch;
+        nFaces          1000;
+        startFace       866600;
+    }
+    cushionTopWall
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          400;
+        startFace       867600;
+    }
+    bottomWall
+    {
+        type            wall;
+        inGroups        1(wall);
+        nFaces          1500;
+        startFace       868000;
+    }
+    outerWall
+    {
+        type            patch;
+        nFaces          2000;
+        startFace       869500;
+    }
+    innerAxis
+    {
+        type            symmetry;
+        inGroups        1(symmetry);
+        nFaces          2000;
+        startFace       871500;
+    }
+    wedgeLow
+    {
+        type            wedge;
+        inGroups        1(wedge);
+        nFaces          30000;
+        startFace       873500;
+    }
+    wedgeHigh
+    {
+        type            wedge;
+        inGroups        1(wedge);
+        nFaces          30000;
+        startFace       903500;
+    }
+)
+
+// ************************************************************************* //
