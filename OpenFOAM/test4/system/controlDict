@@ -12,27 +12,21 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     simpleFoam;
+application     pimpleFoam;
 
-startFrom       startTime;
+startFrom       latestTime;
 startTime       0;
-
 stopAt          endTime;
-endTime         2000;
+endTime         0.02;               // va bene per partire, poi estendi
 
-deltaT          1;
+deltaT          1e-7;               // iniziale molto piccolo
+adjustTimeStep  yes;
+maxCo           0.5;                // controlla il Courant
+maxAlphaCo      0.5;
+maxDeltaT       1e-4;               // non far aumentare troppo Δt
 
 writeControl    timeStep;
-writeInterval   200;
-
-purgeWrite      3;
-
-functions
-{
-    includeFunc residuals;
-}
-
-
+writeInterval   1000;               // riduci I/O finché stabilizzi
 
 // ************************************************************************* //
 
